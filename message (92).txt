@@ -14,10 +14,10 @@
   
 namespace fs = std::filesystem;
 
-fs::path path = "/mnt/c/Users/infor/Downloads/pliki-20241024T095649Z-001/pliki/dane";
+fs::path path = "/mnt/c/Users/szczkr/dane";
 
-int numberOfDataPoints = 200;
-size_t numThreads = 20; 
+int numberOfDataPoints = 2000000;
+size_t numThreads = 32; 
 
 struct FileInfo
 {
@@ -374,7 +374,7 @@ void processData()
     auto start = std::chrono::high_resolution_clock::now();
     pqxx::connection c(
         "dbname=nominatim user=nominatim password=nominatim host=localhost "
-        "port=9740");
+        "port=5432");
     pqxx::work txn(c);
     std::cout << "Polaczony z " << c.dbname() << '\n';
 
