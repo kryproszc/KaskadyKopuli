@@ -1,9 +1,7 @@
 library(ggplot2)
 library(rnaturalearth)
 library(rnaturalearthdata)
-library(rnaturalearthhires)
 library(openxlsx)
-devtools::install_github("ropensci/rnaturalearthhires")
 
 # Funkcja do wczytywania danych o szkodach i obiektach oraz generowania map
 wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
@@ -17,8 +15,8 @@ wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
   # Utwórz nowy workbook Excel
   workbook <- createWorkbook()
   
-  # Pobierz mapę Polski z konturami województw
-  poland_regions <- ne_states(country = "Poland", returnclass = "sf")
+  # Pobierz mapę Polski z konturami kraju
+  poland <- ne_countries(scale = "medium", country = "Poland", returnclass = "sf")
   
   # Iteracja przez foldery ubezpieczycieli
   for (folder in lista_folderow) {
@@ -38,7 +36,7 @@ wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
       
       # Tworzenie mapy ogólnej (budynki tego ubezpieczyciela + wszystkie szkody)
       map_all_damage <- ggplot() +
-        geom_sf(data = poland_regions, fill = "lightyellow", color = "darkblue", size = 0.5) +
+        geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
         geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
         geom_point(data = dane_szkody, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
         theme_classic() +
@@ -54,7 +52,7 @@ wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
       
       # Tworzenie mapy specyficznej (budynki i szkody tylko dla tego ubezpieczyciela)
       map_specific_damage <- ggplot() +
-        geom_sf(data = poland_regions, fill = "lightyellow", color = "darkblue", size = 0.5) +
+        geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
         geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
         geom_point(data = dane_szkody_filtr, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
         theme_classic() +
