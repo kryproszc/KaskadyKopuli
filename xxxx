@@ -1,6 +1,10 @@
-nazwa_ubezpieczyciela <- basename(folder)
-  nazwa_ubezpieczyciela <- sub("^\\d+\\s+", "", nazwa_ubezpieczyciela)  # Usuwa liczby na początku
-  
-  # Skonstruuj ścieżkę do wewnętrznego folderu ubezpieczyciela
-  folder_wewnetrzny <- file.path(folder, nazwa_ubezpieczyciela)
-  
+> map_all_damage
+Error in `calc_limits_bbox()`:
+! Scale limits cannot be mapped onto spatial coordinates in `coord_sf()`.
+i Consider setting `lims_method = "geometry_bbox"` or `default_crs = NULL`.
+Run `rlang::last_trace()` to see where the error occurred.
+>       ggsave(temp_file_all, plot = map_all_damage, width = 6, height = 5, dpi = 300)
+Error in `calc_limits_bbox()`:
+! Scale limits cannot be mapped onto spatial coordinates in `coord_sf()`.
+i Consider setting `lims_method = "geometry_bbox"` or `default_crs = NULL`.
+Run `rlang::last_trace()` to see where the error occurred.
