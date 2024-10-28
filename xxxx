@@ -1,10 +1,24 @@
-> map_all_damage
-Error in `calc_limits_bbox()`:
-! Scale limits cannot be mapped onto spatial coordinates in `coord_sf()`.
-i Consider setting `lims_method = "geometry_bbox"` or `default_crs = NULL`.
-Run `rlang::last_trace()` to see where the error occurred.
->       ggsave(temp_file_all, plot = map_all_damage, width = 6, height = 5, dpi = 300)
-Error in `calc_limits_bbox()`:
-! Scale limits cannot be mapped onto spatial coordinates in `coord_sf()`.
-i Consider setting `lims_method = "geometry_bbox"` or `default_crs = NULL`.
-Run `rlang::last_trace()` to see where the error occurred.
+map_all_damage <- ggplot() +
+  geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
+  geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
+  geom_point(data = dane_szkody, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
+  labs(
+    title = paste("Mapa obiektów ubezpieczonych ubezpieczyciela", nazwa_ubezpieczyciela, "i szkody wszystkich ubezpieczycieli"),
+    x = "Długość geograficzna", y = "Szerokość geograficzna"
+  ) +
+  coord_sf(lims_method = "geometry_bbox")  # Dodane dopasowanie granic
+
+# Tworzenie mapy specyficznej (budynki i szkody tylko dla tego ubezpieczyciela)
+map_specific_damage <- ggplot() +
+  geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
+  geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
+  geom_point(data = dane_szkody_filtr, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
+  theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
+  labs(
+    title = paste("Mapa obiektów ubezpieczonych i szkód ubezpieczyciela", nazwa_ubezpieczyciela),
+    x = "Długość geograficzna", y = "Szerokość geograficzna"
+  ) +
+  coord_sf(lims_method = "geometry_bbox")
