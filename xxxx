@@ -1,145 +1,87 @@
-# Załaduj wymagane pakiety
-if (!requireNamespace("VineCopula", quietly = TRUE)) install.packages("VineCopula")
-if (!requireNamespace("parallel", quietly = TRUE)) install.packages("parallel")
-library(VineCopula)
-library(parallel)
+library(ggplot2)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rnaturalearthhires)
+library(openxlsx)
 
-# Definiujemy docelową macierz korelacji
-target_corr <- matrix(c(
-  1, 0.25, 0.25, 0.25, 0.25,
-  0.25, 1, 0.25, 0.25, 0.5,
-  0.25, 0.25, 1, 0.25, 0,
-  0.25, 0.25, 0.25, 1, 0,
-  0.25, 0.5, 0, 0, 1
-), nrow = 5, byrow = TRUE)
-
-# Definiowanie struktury Vine i losowych kopuli dla 10 połączeń
-family <- matrix(0, 5, 5)
-set.seed(123)  # Ustawienie ziarna dla powtarzalności wyników
-kopule_do_uzycia <- c(3, 4, 5, 6)  # Clayton, Gumbel, Frank, Joe
-
-# Przypisujemy kopule do drzew Vine (pierwsze drzewo: kopula Gaussa, pozostałe: losowe)
-family[2, 1] <- 1  # Gauss w pierwszym drzewie
-family[3, 1] <- sample(kopule_do_uzycia, 1)  # Drzewo 2
-family[3, 2] <- sample(kopule_do_uzycia, 1)  # Drzewo 2
-family[4, 1] <- sample(kopule_do_uzycia, 1)  # Drzewo 3
-family[4, 2] <- sample(kopule_do_uzycia, 1)  # Drzewo 3
-family[4, 3] <- sample(kopule_do_uzycia, 1)  # Drzewo 3
-family[5, 1] <- sample(kopule_do_uzycia, 1)  # Drzewo 4
-family[5, 2] <- sample(kopule_do_uzycia, 1)  # Drzewo 4
-family[5, 3] <- sample(kopule_do_uzycia, 1)  # Drzewo 4
-family[5, 4] <- sample(kopule_do_uzycia, 1)  # Drzewo 4
-
-# Inicjalizacja wektorów `initial_params`, `lower_bounds`, i `upper_bounds`
-num_params <- sum(family != 0)
-initial_params <- numeric(num_params)
-lower_bounds <- numeric(num_params)
-upper_bounds <- numeric(num_params)
-
-# Przypisujemy wartości na podstawie typu kopuli
-param_index <- 1
-for (i in 2:5) {
-  for (j in 1:(i - 1)) {
-    copula_type <- family[i, j]
+# Funkcja do wczytywania danych o szkodach i obiektach oraz generowania map
+wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
+  
+  # Wczytaj plik CSV ze szkodami
+  dane_szkody <- read.csv(file.path(sciezka_glowna, "dane_szkody.csv"))
+  
+  # Przechodzimy przez wszystkie foldery ubezpieczycieli
+  lista_folderow <- list.dirs(sciezka_glowna, full.names = TRUE, recursive = FALSE)
+  
+  # Utwórz nowy workbook Excel
+  workbook <- createWorkbook()
+  
+  # Pobierz mapę Polski z konturami województw
+  poland_regions <- ne_states(country = "Poland", returnclass = "sf")
+  
+  # Iteracja przez foldery ubezpieczycieli
+  for (folder in lista_folderow) {
     
-    if (copula_type == 1) {  # Gauss
-      initial_params[param_index] <- 0
-      lower_bounds[param_index] <- -1
-      upper_bounds[param_index] <- 1
-    } else if (copula_type == 3) {  # Clayton
-      initial_params[param_index] <- 1
-      lower_bounds[param_index] <- 0.1
-      upper_bounds[param_index] <- 28
-    } else if (copula_type == 4) {  # Gumbel
-      initial_params[param_index] <- 1
-      lower_bounds[param_index] <- 1
-      upper_bounds[param_index] <- 17
-    } else if (copula_type == 5) {  # Frank
-      initial_params[param_index] <- 1
-      lower_bounds[param_index] <- -10
-      upper_bounds[param_index] <- 10
-    } else if (copula_type == 6) {  # Joe
-      initial_params[param_index] <- 1
-      lower_bounds[param_index] <- 1
-      upper_bounds[param_index] <- Inf
-    }
-    param_index <- param_index + 1
-  }
-}
-
-# Funkcja celu, która zostanie wywołana równolegle
-parallel_objective_function <- function(params) {
-  # Przypisujemy parametry do odpowiednich komórek macierzy
-  par_matrix <- matrix(0, 5, 5)
-  param_index <- 1
-  for (i in 2:5) {
-    for (j in 1:(i - 1)) {
-      if (family[i, j] != 0) {  # Przypisujemy tylko tam, gdzie jest kopula
-        par_matrix[i, j] <- params[param_index]
-        param_index <- param_index + 1
-      }
-    }
-  }
-  
-  # Tworzymy strukturę Vine z przypisanymi kopulami i parametrami
-  vine_structure <- RVineMatrix(Matrix = matrix(c(5, 2, 3, 1, 4,
-                                                  0, 2, 3, 4, 1,
-                                                  0, 0, 3, 4, 1,
-                                                  0, 0, 0, 4, 1,
-                                                  0, 0, 0, 0, 1), 5, 5),
-                                family = family, par = par_matrix)
-  
-  # Generowanie próbki z Vine Copuli
-  set.seed(123)
-  u <- RVineSim(10000, vine_structure)
-  
-  # Przekształcanie wartości kopuli do zadanych rozkładów brzegowych
-  data <- data.frame(
-    Zmienna1 = qnorm(u[,1], mean = 0, sd = 1),
-    Zmienna2 = qnorm(u[,2], mean = 5, sd = 2),
-    Zmienna3 = qnorm(u[,3], mean = -3, sd = 3),
-    Zmienna4 = qnorm(u[,4], mean = 10, sd = 1),
-    Zmienna5 = qnorm(u[,5], mean = -5, sd = 4)
-  )
-  
-  # Obliczanie macierzy korelacji wygenerowanych danych
-  corr_matrix <- cor(data)
-  
-  # Średni błąd kwadratowy między wynikową a docelową macierzą korelacji
-  mean((corr_matrix[lower.tri(corr_matrix)] - target_corr[lower.tri(target_corr)])^2)
-}
-
-# Funkcja do równoległej optymalizacji
-parallel_optimization <- function(initial_params, lower_bounds, upper_bounds, fn, cores) {
-  # Definiujemy różne punkty startowe dla każdego rdzenia
-  initial_params_list <- replicate(cores, runif(length(initial_params), min = lower_bounds, max = upper_bounds), simplify = FALSE)
-  
-  # Użycie `mclapply` do równoległej optymalizacji na wielu rdzeniach
-  optim_results <- mclapply(initial_params_list, function(params) {
-    optim(par = params, fn = fn, method = "L-BFGS-B", lower = lower_bounds, upper = upper_bounds)
-  }, mc.cores = cores)
-  
-  # Znalezienie najlepszego wyniku
-  best_result <- optim_results[[1]]
-  for (result in optim_results) {
-    if (is.list(result) && result$convergence == 0 && result$value < best_result$value) {
-      best_result <- result
+    # Znajdź plik CSV z danymi obiektów
+    sciezka_csv <- list.files(folder, pattern = "_final\\.csv$", full.names = TRUE)
+    
+    if (length(sciezka_csv) == 1) {
+      # Wczytaj dane o obiektach
+      dane_obiekty <- read.csv(sciezka_csv)[, c("Szerokosc", "Dlugosc")]
+      
+      # Wyciągnij nazwę ubezpieczyciela z nazwy pliku (np. "PZU" z "PZU_final.csv")
+      nazwa_ubezpieczyciela <- sub("_final\\.csv$", "", basename(sciezka_csv))
+      
+      # Filtruj dane_szkody dla danego ubezpieczyciela
+      dane_szkody_filtr <- subset(dane_szkody, Ubezpieczyciel == nazwa_ubezpieczyciela)
+      
+      # Tworzenie mapy ogólnej (budynki tego ubezpieczyciela + wszystkie szkody)
+      map_all_damage <- ggplot() +
+        geom_sf(data = poland_regions, fill = "lightyellow", color = "darkblue", size = 0.5) +
+        geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
+        geom_point(data = dane_szkody, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
+        theme_classic() +
+        theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
+        labs(
+          title = paste("Mapa obiektów ubezpieczonych ubezpieczyciela", nazwa_ubezpieczyciela, "i szkody wszystkich ubezpieczycieli"),
+          x = "Długość geograficzna", y = "Szerokość geograficzna"
+        )
+      
+      # Zapisz mapę ogólną do pliku tymczasowego
+      temp_file_all <- tempfile(fileext = ".png")
+      ggsave(temp_file_all, plot = map_all_damage, width = 6, height = 5, dpi = 300)
+      
+      # Tworzenie mapy specyficznej (budynki i szkody tylko dla tego ubezpieczyciela)
+      map_specific_damage <- ggplot() +
+        geom_sf(data = poland_regions, fill = "lightyellow", color = "darkblue", size = 0.5) +
+        geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
+        geom_point(data = dane_szkody_filtr, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
+        theme_classic() +
+        theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
+        labs(
+          title = paste("Mapa obiektów ubezpieczonych i szkód ubezpieczyciela", nazwa_ubezpieczyciela),
+          x = "Długość geograficzna", y = "Szerokość geograficzna"
+        )
+      
+      # Zapisz mapę specyficzną do pliku tymczasowego
+      temp_file_specific <- tempfile(fileext = ".png")
+      ggsave(temp_file_specific, plot = map_specific_damage, width = 6, height = 5, dpi = 300)
+      
+      # Dodaj nowy arkusz dla ubezpieczyciela i wstaw obie mapki
+      addWorksheet(workbook, sheetName = nazwa_ubezpieczyciela)
+      
+      # Wstaw mapę specyficzną
+      insertImage(workbook, sheet = nazwa_ubezpieczyciela, file = temp_file_specific, width = 20, height = 10, startRow = 1, startCol = 1)
+      
+      # Wstaw mapę ogólną poniżej
+      insertImage(workbook, sheet = nazwa_ubezpieczyciela, file = temp_file_all, width = 20, height = 10, startRow = 53, startCol = 1)
     }
   }
   
-  return(best_result)
+  # Zapisz workbook do pliku Excel
+  saveWorkbook(workbook, "Budynki_podsumowanie.xlsx", overwrite = TRUE)
 }
 
-# Wywołanie optymalizacji równoległej
-num_cores <- detectCores() - 1  # Używamy o jeden rdzeń mniej niż dostępnych
-optim_result <- parallel_optimization(
-  initial_params = initial_params,
-  lower_bounds = lower_bounds,
-  upper_bounds = upper_bounds,
-  fn = parallel_objective_function,
-  cores = num_cores
-)
-
-# Wyświetlenie najlepszego wyniku
-cat("Wartość funkcji celu po optymalizacji:", optim_result$value, "\n")
-cat("Zoptymalizowane parametry:", optim_result$par, "\n")
+# Wywołanie funkcji z podaną ścieżką do głównego folderu
+sciezka_glowna <- "sciezka/do/glownego_folderu"
+wczytaj_i_generuj_mapy(sciezka_glowna)
