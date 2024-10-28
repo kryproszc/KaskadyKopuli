@@ -1,86 +1,11 @@
-library(ggplot2)
-library(rnaturalearth)
-library(rnaturalearthdata)
-library(openxlsx)
-
-# Funkcja do wczytywania danych o szkodach i obiektach oraz generowania map
-wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
-  
-  # Wczytaj plik CSV ze szkodami
-  dane_szkody <- read.csv(file.path(sciezka_glowna, "dane_szkody.csv"))
-  
-  # Przechodzimy przez wszystkie foldery ubezpieczycieli
-  lista_folderow <- list.dirs(sciezka_glowna, full.names = TRUE, recursive = FALSE)
-  
-  # Utwórz nowy workbook Excel
-  workbook <- createWorkbook()
-  
-  # Pobierz mapę Polski z konturami kraju
-  poland <- ne_countries(scale = "medium", country = "Poland", returnclass = "sf")
-  
-  # Iteracja przez foldery ubezpieczycieli
-  for (folder in lista_folderow) {
-    
-    # Znajdź plik CSV z danymi obiektów
-    sciezka_csv <- list.files(folder, pattern = "_final\\.csv$", full.names = TRUE)
-    
-    if (length(sciezka_csv) == 1) {
-      # Wczytaj dane o obiektach
-      dane_obiekty <- read.csv(sciezka_csv)[, c("Szerokosc", "Dlugosc")]
-      
-      # Wyciągnij nazwę ubezpieczyciela z nazwy pliku (np. "PZU" z "PZU_final.csv")
-      nazwa_ubezpieczyciela <- sub("_final\\.csv$", "", basename(sciezka_csv))
-      
-      # Filtruj dane_szkody dla danego ubezpieczyciela
-      dane_szkody_filtr <- subset(dane_szkody, Ubezpieczyciel == nazwa_ubezpieczyciela)
-      
-      # Tworzenie mapy ogólnej (budynki tego ubezpieczyciela + wszystkie szkody)
-      map_all_damage <- ggplot() +
-        geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
-        geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
-        geom_point(data = dane_szkody, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
-        theme_classic() +
-        theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
-        labs(
-          title = paste("Mapa obiektów ubezpieczonych ubezpieczyciela", nazwa_ubezpieczyciela, "i szkody wszystkich ubezpieczycieli"),
-          x = "Długość geograficzna", y = "Szerokość geograficzna"
-        )
-      
-      # Zapisz mapę ogólną do pliku tymczasowego
-      temp_file_all <- tempfile(fileext = ".png")
-      ggsave(temp_file_all, plot = map_all_damage, width = 6, height = 5, dpi = 300)
-      
-      # Tworzenie mapy specyficznej (budynki i szkody tylko dla tego ubezpieczyciela)
-      map_specific_damage <- ggplot() +
-        geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
-        geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
-        geom_point(data = dane_szkody_filtr, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
-        theme_classic() +
-        theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
-        labs(
-          title = paste("Mapa obiektów ubezpieczonych i szkód ubezpieczyciela", nazwa_ubezpieczyciela),
-          x = "Długość geograficzna", y = "Szerokość geograficzna"
-        )
-      
-      # Zapisz mapę specyficzną do pliku tymczasowego
-      temp_file_specific <- tempfile(fileext = ".png")
-      ggsave(temp_file_specific, plot = map_specific_damage, width = 6, height = 5, dpi = 300)
-      
-      # Dodaj nowy arkusz dla ubezpieczyciela i wstaw obie mapki
-      addWorksheet(workbook, sheetName = nazwa_ubezpieczyciela)
-      
-      # Wstaw mapę specyficzną
-      insertImage(workbook, sheet = nazwa_ubezpieczyciela, file = temp_file_specific, width = 20, height = 10, startRow = 1, startCol = 1)
-      
-      # Wstaw mapę ogólną poniżej
-      insertImage(workbook, sheet = nazwa_ubezpieczyciela, file = temp_file_all, width = 20, height = 10, startRow = 53, startCol = 1)
-    }
-  }
-  
-  # Zapisz workbook do pliku Excel
-  saveWorkbook(workbook, "Budynki_podsumowanie.xlsx", overwrite = TRUE)
-}
-
-# Wywołanie funkcji z podaną ścieżką do głównego folderu
-sciezka_glowna <- "sciezka/do/glownego_folderu"
+Error in read.table(file = file, header = header, sep = sep, quote = quote, : 
+powtórzone wartości w 'row.names' nie są dozwolone
+4.
+stop("duplicate 'row.names' are not allowed")
+3.
+read.table(file = file, header = header, sep = sep, quote = quote, 
+dec = dec, fill = fill, comment.char = comment.char, ...)
+2.
+read.csv(file.path(sciezka_glowna, "Szkody_final.csv"))
+1.
 wczytaj_i_generuj_mapy(sciezka_glowna)
