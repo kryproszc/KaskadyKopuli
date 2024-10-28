@@ -1,24 +1,9 @@
-map_all_damage <- ggplot() +
-  geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
-  geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
-  geom_point(data = dane_szkody, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
-  labs(
-    title = paste("Mapa obiektów ubezpieczonych ubezpieczyciela", nazwa_ubezpieczyciela, "i szkody wszystkich ubezpieczycieli"),
-    x = "Długość geograficzna", y = "Szerokość geograficzna"
-  ) +
-  coord_sf(lims_method = "geometry_bbox")  # Dodane dopasowanie granic
+poland <- st_transform(poland, crs = 4326)
 
-# Tworzenie mapy specyficznej (budynki i szkody tylko dla tego ubezpieczyciela)
-map_specific_damage <- ggplot() +
-  geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
-  geom_point(data = dane_obiekty, aes(x = Dlugosc, y = Szerokosc), color = "black", size = 0.3) +
-  geom_point(data = dane_szkody_filtr, aes(x = Dlugosc, y = Szerokosc), color = "red", size = 0.3) +
-  theme_classic() +
-  theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
-  labs(
-    title = paste("Mapa obiektów ubezpieczonych i szkód ubezpieczyciela", nazwa_ubezpieczyciela),
-    x = "Długość geograficzna", y = "Szerokość geograficzna"
-  ) +
-  coord_sf(lims_method = "geometry_bbox")
+# Zakładam, że dane_obiekty i dane_szkody są w formacie data.frame z kolumnami Szerokosc i Dlugosc
+# Jeśli dane nie są obiektami przestrzennymi, przekształcamy je do sf z CRS WGS84
+dane_obiekty <- st_as_sf(dane_obiekty, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
+dane_szkody <- st_as_sf(dane_szkody, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
+
+# Filtracja dla ubezpieczyciela (dane_szkody_filtr) także powinna być w sf
+dane_szkody_filtr <- st_as_sf(dane_szkody_filtr, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
