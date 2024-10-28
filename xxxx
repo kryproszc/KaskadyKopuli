@@ -1,11 +1,6 @@
-Error in read.table(file = file, header = header, sep = sep, quote = quote, : 
-powtórzone wartości w 'row.names' nie są dozwolone
-4.
-stop("duplicate 'row.names' are not allowed")
-3.
-read.table(file = file, header = header, sep = sep, quote = quote, 
-dec = dec, fill = fill, comment.char = comment.char, ...)
-2.
-read.csv(file.path(sciezka_glowna, "Szkody_final.csv"))
-1.
-wczytaj_i_generuj_mapy(sciezka_glowna)
+nazwa_ubezpieczyciela <- basename(folder)
+  nazwa_ubezpieczyciela <- sub("^\\d+\\s+", "", nazwa_ubezpieczyciela)  # Usuwa liczby na początku
+  
+  # Skonstruuj ścieżkę do wewnętrznego folderu ubezpieczyciela
+  folder_wewnetrzny <- file.path(folder, nazwa_ubezpieczyciela)
+  
