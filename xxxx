@@ -1,9 +1,25 @@
-poland <- st_transform(poland, crs = 4326)
-
-# Zakładam, że dane_obiekty i dane_szkody są w formacie data.frame z kolumnami Szerokosc i Dlugosc
-# Jeśli dane nie są obiektami przestrzennymi, przekształcamy je do sf z CRS WGS84
-dane_obiekty <- st_as_sf(dane_obiekty, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
-dane_szkody <- st_as_sf(dane_szkody, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
-
-# Filtracja dla ubezpieczyciela (dane_szkody_filtr) także powinna być w sf
-dane_szkody_filtr <- st_as_sf(dane_szkody_filtr, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
+map_all_damage
+Error in `geom_point()`:
+! Problem while computing aesthetics.
+i Error occurred in the 2nd layer.
+Caused by error in `FUN()`:
+! object 'Dlugosc' not found
+Run `rlang::last_trace()` to see where the error occurred.
+> dane_obiekty
+Simple feature collection with 25617 features and 0 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: 14.22146 ymin: 49.14529 xmax: 23.94337 ymax: 54.82762
+Geodetic CRS:  WGS 84
+First 10 features:
+                    geometry
+1  POINT (18.61971 52.66214)
+2  POINT (18.57769 52.68327)
+3  POINT (18.56459 52.68378)
+4  POINT (21.67776 52.31979)
+5  POINT (18.58549 52.70374)
+6  POINT (21.67494 52.31955)
+7  POINT (19.62262 49.49384)
+8  POINT (17.27071 52.06326)
+9  POINT (17.23448 52.06023)
+10 POINT (20.82112 49.52988)
