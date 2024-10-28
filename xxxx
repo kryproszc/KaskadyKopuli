@@ -3,6 +3,7 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(rnaturalearthhires)
 library(openxlsx)
+devtools::install_github("ropensci/rnaturalearthhires")
 
 # Funkcja do wczytywania danych o szkodach i obiektach oraz generowania map
 wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
