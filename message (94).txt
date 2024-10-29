@@ -339,4 +339,268 @@ void processData()
             city = address_json["hamlet"].get<std::string>();
 
         if (address_json.contains("street"))
-            street = address_
+            street = address_json["street"].get<std::string>();
+
+        if (address_json.contains("housenumber"))
+            housenumber = address_json["housenumber"].get<std::string>();
+
+        if (address_json.contains("place"))
+            place = address_json["place"].get<std::string>();
+
+        if (city.empty())
+            city = place;
+
+        addGeneratedData(Address{"", "", "", "", "", street + " " + housenumber, postcode, city, "",
+                                 "", "", "", std::to_string(lat), std::to_string(lon), "", "", ""});
+
+        num_generated_data++;
+    }
+    logProgress("Generowanie danych zakończone.");
+
+    // Wczytywanie danych z plików CSV
+    std::vector<fs::path> csvFiles = getCsvFiles(path);
+
+    std::vector<std::string> allLines;
+    std::string firstFileHeader;
+
+    max_files = csvFiles.size();
+
+    for (size_t fileIndex = 0; fileIndex < csvFiles.size(); ++fileIndex)
+    {
+        const auto &filePath = csvFiles[fileIndex];
+        logProgress("Przetwarzanie pliku: " + filePath.string());
+
+        cur_fileProcessed = fileIndex + 1;
+
+        std::ifstream file(filePath);
+        if (file.is_open())
+        {
+            FileInfo info;
+            info.path = filePath;
+            info.startIndex = allLines.size();
+            info.lineCount = 0;
+
+            std::string line;
+            bool isFirstLine = true;
+            while (std::getline(file, line))
+            {
+                if (fileIndex == 0)
+                {
+
+                    if (isFirstLine)
+                    {
+                        firstFileHeader = line;
+                        isFirstLine = false;
+                        allLines.push_back(line);
+                    }
+                    else
+                    {
+                        line = removeLastChar(line);
+
+                        allLines.push_back(line);
+                    }
+
+                    info.lineCount++;
+                }
+                else
+                {
+
+                    if (isFirstLine)
+                    {
+                        isFirstLine = false;
+                        continue;
+                    }
+                    line = removeLastChar(line);
+
+                    allLines.push_back(line);
+                    info.lineCount++;
+                }
+            }
+
+            fileInfos.push_back(info);
+            file.close();
+        }
+        else
+        {
+            std::cerr << "Nie można otworzyć pliku: " << filePath.string() << '\n';
+        }
+    }
+
+    std::string csv_data;
+
+    linesToConcatenate = allLines.size();
+    for (const auto &line : allLines)
+    {
+        csv_data += line + "\n";
+
+        concatenated_lines++;
+    }
+
+    std::istringstream iss(csv_data);
+
+    csvstream csv(iss);
+    std::vector<std::pair<std::string, std::string>> row;
+
+    loadedLines = 1;
+    while (csv >> row)
+    {
+        std::string lp = row[0].second;
+        std::string datapoczatku = row[1].second;
+        std::string datakonca = row[2].second;
+        std::string sumaUbezpieczenia = row[3].second;
+        std::string odnowienia = row[4].second;
+        std::string ulica = row[5].second;
+        std::string kodPocztowy = row[6].second;
+        std::string miasto = row[7].second;
+        std::string wojewodztwo = row[8].second;
+        std::string kraj = row[9].second;
+        std::string reasekuracjaO = row[10].second;
+        std::string reasekuracjaF = row[11].second;
+        std::string szerokosc = row[12].second;
+        std::string dlugosc = row[13].second;
+        std::string flaga1 = row[14].second;
+        std::string flaga2 = row[15].second;
+        std::string nr_woj = row[16].second;
+
+        add(Address{lp, datapoczatku, datakonca, sumaUbezpieczenia, odnowienia, ulica, kodPocztowy, miasto, wojewodztwo,
+                    kraj, reasekuracjaO, reasekuracjaF, szerokosc, dlugosc, flaga1, flaga2, nr_woj});
+
+        loadedLines++;
+    }
+
+    logProgress("Usuwanie duplikatów współrzędnych...");
+    removeMatchingCoordinates(generatedData, toProcess);
+    logProgress("Duplikaty usunięte.");
+
+    std::vector<int> duplicates = findDuplicateCoordinates(toProcess);
+
+    max_duplicates = duplicates.size();
+    for (int index : duplicates)
+    {
+        const Address element = randomElement(generatedData);
+
+        toProcess[index].ulica = element.ulica;
+        toProcess[index].miasto = element.miasto;
+        toProcess[index].kodPocztowy = element.kodPocztowy;
+        toProcess[index].wojewodztwo = element.wojewodztwo;
+        toProcess[index].szerokosc = element.szerokosc;
+        toProcess[index].dlugosc = element.dlugosc;
+        toProcess[index].nrwoj = element.nrwoj;
+
+        num_dupl++;
+    }
+
+    for (size_t fileIndex = 0; fileIndex < fileInfos.size(); ++fileIndex)
+    {
+        const auto &info = fileInfos[fileIndex];
+        fs::path newFilePath = info.path;
+        newFilePath.replace_filename(info.path.stem().string() + "_final" + info.path.extension().string());
+
+        logProgress("Zapisywanie do pliku: " + newFilePath.string());
+        std::ofstream outFile(newFilePath);
+        if (outFile.is_open())
+        {
+
+            outFile << firstFileHeader << '\n';
+
+            if (fileIndex == 0)
+            {
+                for (size_t i = info.startIndex; i < info.startIndex + info.lineCount - 1; ++i)
+                {
+
+                    outFile << toProcess[i].toString() << '\n';
+                }
+            }
+            else
+            {
+                for (size_t i = info.startIndex - 1; i < info.startIndex - 1 + info.lineCount; ++i)
+                {
+
+                    outFile << toProcess[i].toString() << '\n';
+                }
+            }
+            outFile.close();
+            std::cout << "Zapisano do pliku: " << newFilePath.string() << '\n';
+        }
+        else
+        {
+            std::cerr << "Nie można zapisać do pliku: " << newFilePath.string() << '\n';
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << red << "[INFO] " << green << "PROGRAM ZAKOŃCZYŁ SWOJE DZIAŁANIE. MOŻESZ Z NIEGO WYJŚĆ" << def << std::endl;
+    std::cout << cyan << "Czas przetwarzania: " << elapsed.count() << " sekund." << deff << std::endl;
+}
+
+const Address &randomElement(const std::vector<Address> &wektor)
+{
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<size_t> dis(0, wektor.size() - 1);
+    return wektor[dis(gen)];
+}
+
+int main()
+{
+    bool exit = false;
+    std::thread processingThread;
+
+    while (!exit)
+    {
+        std::cout << "Wybierz opcję:\n";
+        std::cout << "1. Rozpocznij przetwarzanie danych\n";
+        std::cout << "2. Pokaż postęp prac\n";
+        std::cout << "3. Pokaż na jakie segmenty został podzielony kontener\n";
+        std::cout << "4. Wyjdź\n";
+        int choice;
+        std::cin >> choice;
+
+        switch (choice)
+        {
+        case 1:
+        {
+            if (!processingThread.joinable())
+            {
+                processingThread = std::thread(processData);
+            }
+            else
+            {
+                std::cout << red << "Przetwarzanie danych jest już w toku.\n"
+                          << def;
+            }
+            break;
+        }
+        case 2:
+            std::cout << magneta << "[STATUS] Postęp w przetwarzaniu danych:" << def << std::endl;
+            std::cout << yellow << "  - Liczba wygenerowanych danych: " << std::to_string(num_generated_data) << "/" << std::to_string(max_num_generated_data) << def << std::endl;
+            std::cout << yellow << "  - Obecnie przetwarzany plik: " << std::to_string(cur_fileProcessed) << "/" << std::to_string(max_files) << def << std::endl;
+            std::cout << yellow << "  - Budowanie wspólnego pliku: " << std::to_string(concatenated_lines) << "/" << std::to_string(linesToConcatenate) << def << std::endl;
+            std::cout << yellow << "  - Wczytane rekordy z pliku: " << std::to_string(loadedLines) << "/" << std::to_string(linesToConcatenate) << def << std::endl;
+            std::cout << yellow << "  - Liczba przetworzonych duplikatów: " << std::to_string(num_dupl) << "/" << std::to_string(max_duplicates) << def << std::endl;
+            break;
+        case 3:
+            for (const auto &info : fileInfos)
+            {
+                std::cout << blue << "Plik: " << info.path.string()
+                          << ", Start Index: " << info.startIndex
+                          << ", Line Count: " << info.lineCount << '\n'
+                          << def;
+            }
+            break;
+        case 4:
+            exit = true;
+            if (processingThread.joinable())
+            {
+                processingThread.join();
+            }
+            break;
+        default:
+            std::cout << "Nieprawidłowa opcja, spróbuj ponownie.\n";
+            break;
+        }
+    }
+
+    return 0;
+}
