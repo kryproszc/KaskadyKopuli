@@ -1,22 +1,11 @@
-Zakład był proszony o przekazanie trójkątów wypłat zadośćuczynień osobno dla każdego HRG, w którym występują takie wypłaty, jednak dostarczył dane zbiorcze dla całej grupy 10. Przekazane zadośćuczynienia dotyczą wypłat za śmierć osoby bliskiej z tytułu art. 446 § 4 k.c. i art. 448 k.c., realizowanych od 1 stycznia 2017 roku dla ubezpieczeń z grupy 10. Trójkąt wypłat przyjmuje kształt trapezu, ponieważ dane o wypłatach sięgają do roku 1997.
+# Wybór pierwszego wiersza
+pierwszy_wiersz <- df %>% slice(1)
 
+# Powtórzenie wiersza 40 000 razy
+powtorzony_df <- pierwszy_wiersz[rep(1, 40000), ]
 
+# Opcjonalnie, resetowanie indeksów
+rownames(powtorzony_df) <- NULL
 
-
-
-
-Zakład twierdzi, że wykluczony „trapez” współczynników dla HRG 04M_MTPL dotyczy okresu ujawniania od 2015 roku dodatkowych odszkodowań z tytułu zadośćuczynień za śmierć osoby bliskiej, odnoszących się do szkód z lat 1997–2008. W związku z tym, że kumulacja tych szkód wynikała ze zmian w otoczeniu prawnym, rozwój obserwowany w tamtym okresie miał charakter jednorazowy i nie powinien być podstawą obecnych prognoz rozwoju szkód. Zakład, kierując się zasadą ostrożności, przyjął współczynniki wyłącznie z końcowego okresu, uznając, że zmiany z wykluczonych lat mogły wpływać na rozwój szkód. Dodanie dodatkowych współczynników mogłoby zaburzyć stabilność wybranej średniej.
-
-
-
-
-
-
-Zespół inspekcyjny, aby przeprowadzić analizę stosunku wypłat zadośćuczynień do wszystkich wypłat z grupy 10, dodał trójkąty "paid" dla wymienionych HRG, ograniczając je do lat zajścia szkód od 1997 roku.
-
-
-
-
-Na podstawie danych przedstawionych w załączniku nr X oraz załączniku nr Y, w ramach analizy dla lat zajścia szkód 1997–2008 wyznaczono stosunek sumy wartości z ostatniego okresu rozwoju (ostatnia przekątna) dla inkrementalnych wypłat zadośćuczynień do sumy wartości na tej samej przekątnej dla wszystkich inkrementalnych wypłat z grupy 10. Otrzymany wynik wynosi 54%, co sugeruje, że nie ma podstaw, aby uznać te wypłaty za jednorazowe. Są to wypłaty zgodne z danymi na dzień 31 marca 2024 roku.
-
-Przeprowadzono również obliczenia dla wcześniejszych okresów rozwoju, wyznaczając stosunek sumy wartości inkrementalnych wypłat zadośćuczynień do sumy wartości wszystkich inkrementalnych wypłat na kolejnych przekątnych. Dla przedostatniej przekątnej, odpowiadającej wypłatom na dzień 31 marca 2023 roku, uzyskano wynik 58%, natomiast dla jeszcze wcześniejszej przekątnej, związanej z wypłatami na dzień 31 marca 2022 roku, wartość tego stosunku wyniosła 52%.
+# Wyświetlenie struktury wynikowego data.frame
+str(powtorzony_df)
