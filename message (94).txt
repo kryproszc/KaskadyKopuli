@@ -1,8 +1,299 @@
+#include <pqxx/pqxx>
+#include <future>
+#include <random>
+#include <iostream>
+#include <filesystem>
+#include <vector>
+#include <fstream>
+#include <string>
+#include <utility>
+#include <map>
+#include <ostream>
+#include <set>
+#include <thread>
+#include <chrono>
+#include <tuple>
+#include <nlohmann/json.hpp> // Biblioteka JSON
+
+#include "csvstream.hpp"
+
+namespace fs = std::filesystem;
+using json = nlohmann::json;
+
+fs::path path = "/mnt/c/Users/szczkr/test";
+
+int numberOfDataPoints = 2000000; // Liczba adresów do pobrania z całej tabeli
+size_t numThreads = 32;
+
+struct FileInfo
+{
+    fs::path path;
+    size_t startIndex;
+    size_t lineCount;
+};
+
+namespace Color
+{
+    enum Code
+    {
+        FG_RED = 31,
+        FG_GREEN = 32,
+        FG_YELLOW = 33,
+        FG_BLUE = 34,
+        FG_MAGENTA = 35,
+        FG_CYAN = 36,
+        FG_WHITE = 37,
+        FG_DEFAULT = 39,
+        BG_RED = 41,
+        BG_GREEN = 42,
+        BG_YELLOW = 43,
+        BG_BLUE = 44,
+        BG_MAGENTA = 45,
+        BG_CYAN = 46,
+        BG_WHITE = 47,
+        BG_DEFAULT = 49
+    };
+    class Modifier
+    {
+        Code code;
+
+    public:
+        Modifier(Code pCode) : code(pCode) {}
+        friend std::ostream &
+        operator<<(std::ostream &os, const Modifier &mod)
+        {
+            return os << "\033[" << mod.code << "m";
+        }
+    };
+}
+
+Color::Modifier red(Color::FG_RED);
+Color::Modifier def(Color::FG_DEFAULT);
+Color::Modifier green(Color::FG_GREEN);
+Color::Modifier blue(Color::FG_BLUE);
+Color::Modifier yellow(Color::FG_YELLOW);
+Color::Modifier magneta(Color::FG_MAGENTA);
+Color::Modifier cyan(Color::BG_CYAN);
+Color::Modifier deff(Color::BG_DEFAULT);
+
+void logProgress(const std::string &message)
+{
+    std::cout << red << "[INFO] " << def << message << std::endl;
+}
+
+std::string removeLastChar(const std::string &line)
+{
+    if (!line.empty())
+    {
+        return line.substr(0, line.size() - 1);
+    }
+    return line;
+}
+
+std::vector<fs::path> getCsvFiles(const fs::path &path)
+{
+    std::vector<fs::path> csvFiles;
+    for (const auto &entry : fs::recursive_directory_iterator(path))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".csv" &&
+            entry.path().stem().string().find("_final") == std::string::npos)
+        {
+            csvFiles.push_back(entry.path());
+        }
+    }
+    return csvFiles;
+}
+
+struct Address
+{
+    std::string lp;
+    std::string dataPoczatku;
+    std::string dataKonca;
+    std::string sumaUbezpieczenia;
+    std::string odnowienia;
+    std::string ulica;
+    std::string kodPocztowy;
+    std::string miasto;
+    std::string wojewodztwo;
+    std::string kraj;
+    std::string reasekuracjaO;
+    std::string reasekuracjaF;
+    std::string szerokosc;
+    std::string dlugosc;
+    std::string flaga1;
+    std::string flaga2;
+    std::string nrwoj;
+
+    std::string toString() const
+    {
+        return lp + ";" + dataPoczatku + ";" + dataKonca + ";" + sumaUbezpieczenia + ";" +
+               odnowienia + ";" + ulica + ";" + kodPocztowy + ";" + miasto + ";" +
+               wojewodztwo + ";" + kraj + ";" + reasekuracjaO + ";" + reasekuracjaF + ";" +
+               szerokosc + ";" + dlugosc + ";" + flaga1 + ";" + flaga2 + ";" + nrwoj;
+    }
+};
+
+std::vector<Address> toProcess;
+std::vector<Address> generatedData;
+
+std::vector<int> findDuplicateCoordinates(const std::vector<Address> &toProcess)
+{
+    std::map<std::pair<std::string, std::string>, std::set<int>> coordMap;
+    std::vector<int> duplicateIndices;
+
+    for (int i = 0; i < toProcess.size(); ++i)
+    {
+        const auto &address = toProcess[i];
+        if ((address.szerokosc == "brak danych" || address.flaga1 == "0" || address.flaga1 == "4" || address.flaga1 == "5" || address.flaga1 == "6") ||
+            ((address.flaga1 == "1" || address.flaga1 == "2" || address.flaga1 == "3") && address.flaga2 != "0"))
+        {
+            std::pair<std::string, std::string> coord(address.szerokosc, address.dlugosc);
+            coordMap[coord].insert(i);
+        }
+    }
+
+    for (const auto &entry : coordMap)
+    {
+        if (entry.second.size() > 1)
+        {
+            duplicateIndices.insert(duplicateIndices.end(), entry.second.begin(), entry.second.end());
+        }
+        else if (entry.second.size() == 1)
+        {
+            int firstIndex = *entry.second.begin();
+            if (toProcess[firstIndex].szerokosc == "brak danych")
+                duplicateIndices.insert(duplicateIndices.end(), entry.second.begin(), entry.second.end());
+        }
+    }
+
+    return duplicateIndices;
+}
+
+void add(const Address &pos)
+{
+    toProcess.push_back(pos);
+}
+
+void addGeneratedData(const Address &pos)
+{
+    generatedData.push_back(pos);
+}
+
+void processChunk(const std::vector<Address> &generatedData, const std::vector<Address> &toProcess,
+                  std::vector<Address> &localResult, size_t start, size_t end)
+{
+    for (size_t i = start; i < end; ++i)
+    {
+        bool shouldErase = false;
+        for (const auto &process : toProcess)
+        {
+            if (generatedData[i].szerokosc == process.szerokosc && generatedData[i].dlugosc == process.dlugosc)
+            {
+                shouldErase = true;
+                break;
+            }
+        }
+        if (!shouldErase)
+        {
+            localResult.push_back(generatedData[i]);
+        }
+    }
+}
+
+void removeMatchingCoordinates(std::vector<Address> &generatedData, const std::vector<Address> &toProcess)
+{
+    size_t chunkSize = generatedData.size() / numThreads;
+    std::vector<std::thread> threads;
+    std::vector<std::vector<Address>> results(numThreads);
+
+    for (size_t i = 0; i < numThreads; ++i)
+    {
+        size_t start = i * chunkSize;
+        size_t end = (i == numThreads - 1) ? generatedData.size() : start + chunkSize;
+
+        threads.emplace_back(processChunk, std::cref(generatedData), std::cref(toProcess),
+                             std::ref(results[i]), start, end);
+    }
+
+    for (auto &thread : threads)
+    {
+        thread.join();
+    }
+
+    std::vector<Address> finalResult;
+    for (const auto &localResult : results)
+    {
+        finalResult.insert(finalResult.end(), localResult.begin(), localResult.end());
+    }
+
+    generatedData = finalResult;
+
+    // Sortowanie przed usunięciem duplikatów
+    std::sort(generatedData.begin(), generatedData.end(),
+              [](const Address &a, const Address &b)
+              {
+                  return std::tie(a.szerokosc, a.dlugosc) < std::tie(b.szerokosc, b.dlugosc);
+              });
+
+    // Usuwanie duplikatów
+    generatedData.erase(
+        std::unique(generatedData.begin(), generatedData.end(),
+                    [](const Address &a, const Address &b)
+                    {
+                        return a.szerokosc == b.szerokosc && a.dlugosc == b.dlugosc;
+                    }),
+        generatedData.end());
+
+    // Losowe wymieszanie danych po usunięciu duplikatów
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(generatedData.begin(), generatedData.end(), g);
+}
+
+void printAddresses(const std::vector<Address> &addresses, const std::string &title)
+{
+    std::cout << title << ":\n";
+    for (const auto &address : addresses)
+    {
+        std::cout << address.lp << ","
+                  << address.dataPoczatku << ","
+                  << address.dataKonca << ","
+                  << address.sumaUbezpieczenia << ","
+                  << address.odnowienia << ","
+                  << address.ulica << ","
+                  << address.kodPocztowy << ","
+                  << address.miasto << ","
+                  << address.wojewodztwo << ","
+                  << address.kraj << ","
+                  << address.reasekuracjaO << ","
+                  << address.reasekuracjaF << ","
+                  << address.szerokosc << ","
+                  << address.dlugosc << ","
+                  << address.flaga1 << ","
+                  << address.flaga2 << ","
+                  << address.nrwoj
+                  << "\n";
+    }
+    std::cout << std::endl;
+}
+
+int num_generated_data = 0;
+int max_num_generated_data = 0;
+int max_files = 0;
+int cur_fileProcessed = 0;
+int linesToConcatenate = 0;
+int concatenated_lines = 0;
+int loadedLines = 0;
+int max_duplicates = 0;
+int num_dupl = 0;
+
+std::vector<FileInfo> fileInfos;
+
 void processData()
 {
     auto start = std::chrono::high_resolution_clock::now();
     pqxx::connection c(
-        "dbname=twoja_baza user=twoj_uzytkownik password=twoje_haslo host=localhost port=5432");
+        "dbname=nominatim user=nominatim password=nominatim host=localhost port=5432");
     pqxx::work txn(c);
     std::cout << "Połączono z bazą danych: " << c.dbname() << '\n';
 
@@ -48,25 +339,4 @@ void processData()
             city = address_json["hamlet"].get<std::string>();
 
         if (address_json.contains("street"))
-            street = address_json["street"].get<std::string>();
-
-        if (address_json.contains("housenumber"))
-            housenumber = address_json["housenumber"].get<std::string>();
-
-        if (address_json.contains("place"))
-            place = address_json["place"].get<std::string>();
-
-        if (city.empty())
-            city = place;
-
-        addGeneratedData(Address{"", "", "", "", "", street + " " + housenumber, postcode, city, "",
-                                 "", "", "", std::to_string(lat), std::to_string(lon), "", "", ""});
-
-        num_generated_data++;
-    }
-    logProgress("Generowanie danych zakończone.");
-
-    // Reszta funkcji pozostaje bez zmian
-    // ...
-
-}
+            street = address_
