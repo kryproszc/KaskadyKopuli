@@ -730,38 +730,44 @@ const Address &randomElement(const std::vector<Address> &wektor)
 
 std::stringstream query;
 
-WITH wojewodztwa AS (
-  SELECT 'Dolnośląskie' AS nazwa, 50000 AS kod_min, 59999 AS kod_max UNION ALL
-  SELECT 'Kujawsko-Pomorskie', 85000, 89999 UNION ALL
-  SELECT 'Lubelskie', 20000, 23999 UNION ALL
-  SELECT 'Lubuskie', 65000, 69999 UNION ALL
-  SELECT 'Łódzkie', 90000, 99999 UNION ALL
-  SELECT 'Małopolskie', 30000, 34999 UNION ALL
-  SELECT 'Mazowieckie', 0, 19999 UNION ALL
-  SELECT 'Opolskie', 45000, 49999 UNION ALL
-  SELECT 'Podkarpackie', 35000, 39999 UNION ALL
-  SELECT 'Podlaskie', 15000, 19999 UNION ALL
-  SELECT 'Pomorskie', 80000, 84999 UNION ALL
-  SELECT 'Śląskie', 40000, 44999 UNION ALL
-  SELECT 'Świętokrzyskie', 25000, 29999 UNION ALL
-  SELECT 'Warmińsko-Mazurskie', 10000, 14999 UNION ALL
-  SELECT 'Wielkopolskie', 60000, 64999 UNION ALL
-  SELECT 'Zachodniopomorskie', 70000, 78999
-),
-ranked_data AS (
-  SELECT
-    p.postcode,
-    p.address,
-    ST_Y(ST_Centroid(p.centroid)) AS lat,
-    ST_X(ST_Centroid(p.centroid)) AS lon,
-    w.nazwa AS wojewodztwo,
-    ROW_NUMBER() OVER (PARTITION BY w.nazwa ORDER BY RANDOM()) AS rn
-  FROM placex p
-  JOIN wojewodztwa w ON
-    (CAST(REPLACE(p.postcode, '-', '') AS INTEGER) BETWEEN w.kod_min AND w.kod_max)
-  WHERE p.address -> 'housenumber' IS NOT NULL
-    AND p.address -> 'housenumber' != ''
-)
-SELECT *
-FROM ranked_data
-WHERE rn <= 2500;
+
+
+std::stringstream query;
+
+query << "WITH wojewodztwa AS (\n"
+      << "  SELECT 'Dolnośląskie' AS nazwa, 50000 AS kod_min, 59999 AS kod_max UNION ALL\n"
+      << "  SELECT 'Kujawsko-Pomorskie', 85000, 89999 UNION ALL\n"
+      << "  SELECT 'Lubelskie', 20000, 23999 UNION ALL\n"
+      << "  SELECT 'Lubuskie', 65000, 69999 UNION ALL\n"
+      << "  SELECT 'Łódzkie', 90000, 99999 UNION ALL\n"
+      << "  SELECT 'Małopolskie', 30000, 34999 UNION ALL\n"
+      << "  SELECT 'Mazowieckie', 0, 19999 UNION ALL\n"
+      << "  SELECT 'Opolskie', 45000, 49999 UNION ALL\n"
+      << "  SELECT 'Podkarpackie', 35000, 39999 UNION ALL\n"
+      << "  SELECT 'Podlaskie', 15000, 19999 UNION ALL\n"
+      << "  SELECT 'Pomorskie', 80000, 84999 UNION ALL\n"
+      << "  SELECT 'Śląskie', 40000, 44999 UNION ALL\n"
+      << "  SELECT 'Świętokrzyskie', 25000, 29999 UNION ALL\n"
+      << "  SELECT 'Warmińsko-Mazurskie', 10000, 14999 UNION ALL\n"
+      << "  SELECT 'Wielkopolskie', 60000, 64999 UNION ALL\n"
+      << "  SELECT 'Zachodniopomorskie', 70000, 78999\n"
+      << "),\n"
+      << "ranked_data AS (\n"
+      << "  SELECT\n"
+      << "    p.postcode,\n"
+      << "    p.address,\n"
+      << "    ST_Y(ST_Centroid(p.centroid)) AS lat,\n"
+      << "    ST_X(ST_Centroid(p.centroid)) AS lon,\n"
+      << "    w.nazwa AS wojewodztwo,\n"
+      << "    ROW_NUMBER() OVER (PARTITION BY w.nazwa ORDER BY RANDOM()) AS rn\n"
+      << "  FROM placex p\n"
+      << "  JOIN wojewodztwa w ON\n"
+      << "    (CAST(REGEXP_REPLACE(p.postcode, '[^0-9]', '', 'g') AS INTEGER) BETWEEN w.kod_min AND w.kod_max)\n"
+      << "  WHERE\n"
+      << "    p.address -> 'housenumber' IS NOT NULL AND\n"
+      << "    p.address -> 'housenumber' != ''\n"
+      << ")\n"
+      << "SELECT *\n"
+      << "FROM ranked_data\n"
+      << "WHERE rn <= " << (numberOfDataPoints / 16) << ";\n";
+
