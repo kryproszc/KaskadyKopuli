@@ -728,6 +728,8 @@ const Address &randomElement(const std::vector<Address> &wektor)
     return wektor[index];
 }
 
+std::stringstream query;
+
 WITH wojewodztwa AS (
   SELECT 'Dolnośląskie' AS nazwa, 50000 AS kod_min, 59999 AS kod_max UNION ALL
   SELECT 'Kujawsko-Pomorskie', 85000, 89999 UNION ALL
@@ -762,4 +764,4 @@ ranked_data AS (
 )
 SELECT *
 FROM ranked_data
-WHERE rn <= 2500; -- Pobieramy po 2500 losowych punktów z każdego województwa
+WHERE rn <= 2500;
