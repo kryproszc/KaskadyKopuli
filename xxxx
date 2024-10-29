@@ -1,11 +1,26 @@
-# Wybór pierwszego wiersza
-pierwszy_wiersz <- df %>% slice(1)
+HRG reasekuracji czynnej 
+Zespół inspekcyjny ustalił na podstawie wyjaśnień Zakładu (zał. nr  ), że przepływ BONUS_RES jest przyjmowany w zaksięgowanej wartości na koncie 6220020000 „Zmiana stanu rezerwy na premie i rabaty brutto, z reasekuracji czynnej ”.  Przepływy dla reasekuracji czynnej są przyjmowane w wysokości wartości zaksięgowanych w systemie Aurora na koncie 6220020000, dla których data wymagalności przypada po okresie sprawozdawczym. Przepływ BONUS_RES jest przyjmowany w zaksięgowanej wartości
+ Wyliczone wartości mamy w tabeli 21 dla lob X
 
-# Powtórzenie wiersza 40 000 razy
-powtorzony_df <- pierwszy_wiersz[rep(1, 40000), ]
 
-# Opcjonalnie, resetowanie indeksów
-rownames(powtorzony_df) <- NULL
+HRG ubezpieczeń bezpośrednich to rezerwa na premie i rabaty 
 
-# Wyświetlenie struktury wynikowego data.frame
-str(powtorzony_df)
+W tabeli 21 dla lob Y sa wartości po dyskoncie tworzone przez biuro Aktuarialne w wysokościach raportowanych przez  biura merytoryczne odpowiedzialne za poszczególne produkty.
+
+	Zakład w trakcie kontroli przekazał pliki, w których biuraz zaraportowały kwoty tych rezerw.
+
+BUF-017 Rezerwy na premie i rabaty BUF 202403.xlsx
+W załączeniu pliki z wyliczeniem rezerwy na premie i rabaty przesłane przez Biuro Ubezpieczeń Ryzyk Finansowych. 
+Informacje ogólne: 
+Rezerwa na premie i rabaty liczona jest dla każdego rocznego okresu każdej umowy UWP na koniec miesiąca jako % (procent należnej premii zapisany w umowie) do składki zarobionej na koniec danego okresu. 
+Składka zarobiona dla poszczególnych umów za dany okres, liczona jest jako składka przypisana (od początku obowiązywania danej polisy) – odjąć stan rezerwy składkowej na koniec danego miesiąca. 
+Dodatkowo, przy liczeniu rezerwy na premie i rabaty brane są również pod uwagę warunki, jakie muszą zostać spełnione, zapisane w poszczególnych umowach. 
+Rezerwa jest rozwiązywana na koniec miesiąca, w którym nastąpiła wypłata premii lub uzyskano potwierdzoną informację, że nie zostanie spełniony warunek zapisany w umowie. 
+
+W załączonym KUZ_FINAL_03.2024.xlsx wykazywany jest stan rezerw na premie i rabaty na poszczególnych produktach. Tu mamy biuro klienta korporacyjnego. 
+W procesie – zbieramy informacje na jakich polisach i w jakiej wysokości jest ustalona opcja na premie i rabaty. 
+Wyliczana jest przez sprzedawcę wg. ustaleń jakich dokonał przy zawieraniu umowy ubezpieczenia. 
+Raportując utrzymujemy stany rezerw w wysokościach odpowiadających rezerwie składek – proporcjonalne wchodzenie rezerwy na premie i rabaty względem zarabiania się składki. 
+W ten sposób zachowujemy adekwatność przychodów i kosztów. 
+
+
