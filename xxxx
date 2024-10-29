@@ -659,7 +659,7 @@ bool exit = false;
 }
 
 
-
+#################
 #include <string>
 #include <map>
 #include <algorithm>
@@ -717,4 +717,13 @@ std::pair<std::string, int> getWojewodztwoMapa(const std::string &kodPocztowy)
     }
 
     return {"Nieznane województwo", 0};
+}
+
+const Address &randomElement(const std::vector<Address> &wektor)
+{
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, wektor.size() - 1);
+    int index = dis(gen);
+    return wektor[index];
 }
