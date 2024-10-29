@@ -657,3 +657,64 @@ bool exit = false;
 
     return 0;
 }
+
+
+
+#include <string>
+#include <map>
+#include <algorithm>
+#include <utility>
+
+std::pair<std::string, int> getWojewodztwoMapa(const std::string &kodPocztowy)
+{
+    int kod;
+    try
+    {
+        // Usunięcie myślnika z kodu pocztowego
+        std::string kodBezMyslnika = kodPocztowy;
+        kodBezMyslnika.erase(std::remove(kodBezMyslnika.begin(), kodBezMyslnika.end(), '-'), kodBezMyslnika.end());
+
+        // Sprawdzenie, czy kod pocztowy ma 5 cyfr
+        if (kodBezMyslnika.length() != 5)
+            throw std::invalid_argument("Nieprawidłowy format kodu pocztowego");
+
+        // Konwersja pełnego kodu pocztowego na liczbę
+        kod = std::stoi(kodBezMyslnika);
+    }
+    catch (const std::exception &e)
+    {
+        return {"Nieznane województwo", 0};
+    }
+
+    // Zakresy kodów pocztowych dla województw (aktualne na podstawie danych Poczty Polskiej)
+    std::map<std::string, std::pair<int, int>> wojewodztwa = {
+        {"Dolnośląskie", {50000, 59999}},
+        {"Kujawsko-Pomorskie", {87000, 89999}},
+        {"Lubelskie", {20000, 23999}},
+        {"Lubuskie", {65000, 69999}},
+        {"Łódzkie", {90000, 99999}},
+        {"Małopolskie", {30000, 39999}},
+        {"Mazowieckie", {0, 19999}},
+        {"Opolskie", {45000, 49999}},
+        {"Podkarpackie", {35000, 39999}},
+        {"Podlaskie", {15000, 19999}},
+        {"Pomorskie", {80000, 84999}},
+        {"Śląskie", {40000, 49999}},
+        {"Świętokrzyskie", {25000, 29999}},
+        {"Warmińsko-Mazurskie", {10000, 19999}},
+        {"Wielkopolskie", {60000, 64999}},
+        {"Zachodniopomorskie", {70000, 79999}}
+    };
+
+    int numer = 1;
+    for (const auto &woj : wojewodztwa)
+    {
+        if (kod >= woj.second.first && kod <= woj.second.second)
+        {
+            return {woj.first, numer};
+        }
+        ++numer;
+    }
+
+    return {"Nieznane województwo", 0};
+}
