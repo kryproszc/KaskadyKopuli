@@ -167,3 +167,9 @@ int main()
 
     return 0;
 }
+
+
+Łączna liczba rekordów: 15858407
+Liczba adresów spełniających flagi losowe: 1516661
+Liczba unikalnych par (szerokosc, dlugosc) wśród tych adresów: 1260741
+Liczba powtarzających się par (szerokosc, dlugosc): 255920
