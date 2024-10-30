@@ -16,7 +16,7 @@ namespace fs = std::filesystem;
 
 fs::path path = "/mnt/c/Users/szczkr/test";
 
-int numberOfDataPoints = 2000000;
+int numberOfDataPoints = 100000;
 size_t numThreads = 32; 
 
 struct FileInfo
@@ -84,7 +84,7 @@ std::vector<fs::path> getCsvFiles(const fs::path &path)
     for (const auto &entry : fs::recursive_directory_iterator(path))
     {
         if (entry.is_regular_file() && entry.path().extension() == ".csv" &&
-            entry.path().stem().string().find("_final") != std::string::npos)
+            entry.path().stem().string().find("_final") == std::string::npos)
         {
             csvFiles.push_back(entry.path());
         }
@@ -643,7 +643,7 @@ void processData()
     {
         const auto &info = fileInfos[fileIndex];
         fs::path newFilePath = info.path;
-        newFilePath.replace_filename(info.path.stem().string() + "_final2" + info.path.extension().string());
+        newFilePath.replace_filename(info.path.stem().string() + "_final" + info.path.extension().string());
         
         logProgress("Zapisywanie do pliku: " + newFilePath.string());
         std::ofstream outFile(newFilePath);
@@ -733,5 +733,3 @@ bool exit = false;
 
     return 0;
 }
-
-
