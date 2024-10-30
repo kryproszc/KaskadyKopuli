@@ -130,11 +130,23 @@ int main()
         }
     }
 
-    // Wykrywanie duplikatów par (szerokosc, dlugosc)
+    // Filtrowanie adresów na podstawie podanych warunków
+    std::vector<Address> filteredAddresses;
+
+    for (const auto &address : allAddresses)
+    {
+        if ((address.szerokosc == "brak danych" || address.flaga1 == "0" || address.flaga1 == "4" || address.flaga1 == "5" || address.flaga1 == "6") ||
+            ((address.flaga1 == "1" || address.flaga1 == "2" || address.flaga1 == "3") && address.flaga2 != "0"))
+        {
+            filteredAddresses.push_back(address);
+        }
+    }
+
+    // Wykrywanie duplikatów par (szerokosc, dlugosc) wśród filtrowanych adresów
     std::map<std::pair<std::string, std::string>, int> coordCount;
     int totalDuplicates = 0;
 
-    for (const auto &addr : allAddresses)
+    for (const auto &addr : filteredAddresses)
     {
         auto coord = std::make_pair(addr.szerokosc, addr.dlugosc);
         coordCount[coord]++;
@@ -149,7 +161,8 @@ int main()
     }
 
     std::cout << "Łączna liczba rekordów: " << allAddresses.size() << std::endl;
-    std::cout << "Liczba unikalnych par (szerokosc, dlugosc): " << coordCount.size() << std::endl;
+    std::cout << "Liczba adresów spełniających warunki: " << filteredAddresses.size() << std::endl;
+    std::cout << "Liczba unikalnych par (szerokosc, dlugosc) wśród tych adresów: " << coordCount.size() << std::endl;
     std::cout << "Liczba powtarzających się par (szerokosc, dlugosc): " << totalDuplicates << std::endl;
 
     return 0;
