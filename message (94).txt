@@ -22,7 +22,7 @@ using json = nlohmann::json;
 
 fs::path path = "/mnt/c/Users/szczkr/test";
 
-int numberOfDataPoints = 2000000; // Liczba adresów do pobrania z całej tabeli
+int numberOfDataPoints = 5000000; // 5 milionów danych
 size_t numThreads = 32;
 
 struct FileInfo
@@ -179,6 +179,53 @@ void addGeneratedData(const Address &pos)
     generatedData.push_back(pos);
 }
 
+std::pair<std::string, int> getWojewodztwoMapa(const std::string &kodPocztowy)
+{
+    int kod;
+    try
+    {
+        kod = std::stoi(kodPocztowy.substr(0, 2)) * 1000;
+    }
+    catch (const std::invalid_argument &e)
+    {
+        return {"Nieznane województwo", 0};
+    }
+    catch (const std::out_of_range &e)
+    {
+        return {"Nieznane województwo", 0};
+    }
+
+    std::map<std::string, std::pair<int, int>> wojewodztwa = {
+        {"Dolnośląskie", {50000, 59999}},
+        {"Kujawsko-Pomorskie", {85000, 89999}},
+        {"Lubelskie", {20000, 23999}},
+        {"Lubuskie", {65000, 69999}},
+        {"Łódzkie", {90000, 99999}},
+        {"Małopolskie", {30000, 34999}},
+        {"Mazowieckie", {0, 9999}},
+        {"Opolskie", {45000, 49999}},
+        {"Podkarpackie", {35000, 39999}},
+        {"Podlaskie", {15000, 19999}},
+        {"Pomorskie", {80000, 84999}},
+        {"Śląskie", {40000, 44999}},
+        {"Świętokrzyskie", {25000, 29999}},
+        {"Warmińsko-Mazurskie", {10000, 14999}},
+        {"Wielkopolskie", {60000, 64999}},
+        {"Zachodniopomorskie", {70000, 78999}}};
+
+    int numer = 1;
+    for (const auto &woj : wojewodztwa)
+    {
+        if (kod >= woj.second.first && kod <= woj.second.second)
+        {
+            return {woj.first, numer};
+        }
+        ++numer;
+    }
+
+    return {"Nieznane województwo", 0};
+}
+
 void processChunk(const std::vector<Address> &generatedData, const std::vector<Address> &toProcess,
                   std::vector<Address> &localResult, size_t start, size_t end)
 {
@@ -293,23 +340,23 @@ void processData()
 {
     auto start = std::chrono::high_resolution_clock::now();
     pqxx::connection c(
-        "dbname=nominatim user=nominatim password=nominatim host=localhost port=5432");
+        "dbname=nominatim user=nominatim password=nominatim host=localhost "
+        "port=5432");
     pqxx::work txn(c);
-    std::cout << "Połączono z bazą danych: " << c.dbname() << '\n';
+    std::cout << "Połączony z " << c.dbname() << '\n';
 
     std::stringstream query;
 
-    // Nowe zapytanie SQL pobierające losowe adresy z całej tabeli
+    // Zmienione zapytanie SQL z większym TABLESAMPLE
     query << "SELECT DISTINCT \n"
           << "    postcode, address,\n"
           << "    ST_Y(ST_Centroid(centroid)) AS lat,\n"
           << "    ST_X(ST_Centroid(centroid)) AS lon\n"
           << "FROM \n"
-          << "    placex\n"
+          << "    placex TABLESAMPLE SYSTEM (20)\n" // Pobiera około 20% tabeli
           << "WHERE \n"
           << "    address -> 'housenumber' IS NOT NULL AND \n"
           << "    address -> 'housenumber' != ''\n"
-          << "ORDER BY RANDOM()\n"
           << "LIMIT " << numberOfDataPoints << ";\n";
 
     logProgress("Generowanie danych...");
@@ -350,14 +397,15 @@ void processData()
         if (city.empty())
             city = place;
 
-        addGeneratedData(Address{"", "", "", "", "", street + " " + housenumber, postcode, city, "",
-                                 "", "", "", std::to_string(lat), std::to_string(lon), "", "", ""});
+        auto [wojewodztwo, nr_woj] = getWojewodztwoMapa(postcode);
+
+        addGeneratedData(Address{"", "", "", "", "", street + " " + housenumber, postcode, city, wojewodztwo,
+                                 "", "", "", std::to_string(lat), std::to_string(lon), "", "", std::to_string(nr_woj)});
 
         num_generated_data++;
     }
     logProgress("Generowanie danych zakończone.");
 
-    // Wczytywanie danych z plików CSV
     std::vector<fs::path> csvFiles = getCsvFiles(path);
 
     std::vector<std::string> allLines;
@@ -435,7 +483,6 @@ void processData()
 
         concatenated_lines++;
     }
-
     std::istringstream iss(csv_data);
 
     csvstream csv(iss);
@@ -474,10 +521,22 @@ void processData()
 
     std::vector<int> duplicates = findDuplicateCoordinates(toProcess);
 
+    // Przygotowanie do zastępowania duplikatów bez powtórzeń
+    size_t generatedDataIndex = 0;
+    std::random_device rd;
+    std::mt19937 g(rd());
+
     max_duplicates = duplicates.size();
     for (int index : duplicates)
     {
-        const Address element = randomElement(generatedData);
+        if (generatedDataIndex >= generatedData.size())
+        {
+            // Wszystkie elementy zostały użyte; ponownie wymieszaj dane i zacznij od początku
+            std::shuffle(generatedData.begin(), generatedData.end(), g);
+            generatedDataIndex = 0;
+        }
+
+        const Address &element = generatedData[generatedDataIndex++];
 
         toProcess[index].ulica = element.ulica;
         toProcess[index].miasto = element.miasto;
@@ -532,14 +591,6 @@ void processData()
     std::chrono::duration<double> elapsed = end - start;
     std::cout << red << "[INFO] " << green << "PROGRAM ZAKOŃCZYŁ SWOJE DZIAŁANIE. MOŻESZ Z NIEGO WYJŚĆ" << def << std::endl;
     std::cout << cyan << "Czas przetwarzania: " << elapsed.count() << " sekund." << deff << std::endl;
-}
-
-const Address &randomElement(const std::vector<Address> &wektor)
-{
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<size_t> dis(0, wektor.size() - 1);
-    return wektor[dis(gen)];
 }
 
 int main()
