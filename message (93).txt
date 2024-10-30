@@ -1,3 +1,6 @@
+logProgress("Liczba elementów w generatedData przed zamianą współrzędnych: " + std::to_string(generatedData.size()));
+
+
 #include <pqxx/pqxx>
 #include <future>
 #include <random>
