@@ -1,3 +1,25 @@
+std::vector<fs::path> getCsvFiles(const fs::path &path)
+{
+    std::vector<fs::path> csvFiles;
+    for (const auto &entry : fs::recursive_directory_iterator(path))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".csv")
+        {
+            // Sprawdza, czy nazwa pliku kończy się na "_final"
+            std::string filename = entry.path().stem().string();
+            if (filename.size() >= 6 && filename.substr(filename.size() - 6) == "_final")
+            {
+                csvFiles.push_back(entry.path());
+            }
+        }
+    }
+    return csvFiles;
+}
+
+
+
+
+
 #include <iostream>
 #include <filesystem>
 #include <fstream>
