@@ -1,6 +1,2 @@
-dane_obiekty <- tryCatch({
-  st_as_sf(dane_obiekty, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
-}, error = function(e) {
-  message("Błąd podczas konwersji danych obiektów do sf: ", e)
-  return(NULL)
-})
+"przetwarzam plik dla: PZU SA"
+Błąd podczas konwersji danych obiektów do sf: Error in st_as_sf.data.frame(dane_obiekty, coords = c("Dlugosc", "Szerokosc"), : missing values in coordinates not allowed
