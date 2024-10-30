@@ -1,5 +1,3 @@
-1;2023-01-12;2024-01-11;1271737,92;TAK;Złota 1B;26-026;Morawica;Świętokrzyskie;POLSKA;TAK1,2,6,7;NIE;50.747278;20.619196;1;1;16
-
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -36,15 +34,6 @@ struct Address
     std::string flaga2;
     std::string nrwoj;
 };
-
-std::string removeLastChar(const std::string &line)
-{
-    if (!line.empty())
-    {
-        return line.substr(0, line.size() - 1);
-    }
-    return line;
-}
 
 std::vector<fs::path> getCsvFiles(const fs::path &path)
 {
@@ -85,7 +74,6 @@ int main()
                 }
                 else
                 {
-                    line = removeLastChar(line); // Usuwamy ewentualne znaki końca linii
                     std::istringstream iss(line);
                     std::string token;
                     std::vector<std::string> tokens;
@@ -95,7 +83,7 @@ int main()
                         tokens.push_back(token);
                     }
 
-                    if (tokens.size() >= 17)
+                    if (tokens.size() == 17) // Sprawdzamy, czy wiersz ma dokładnie 17 kolumn
                     {
                         Address addr;
                         addr.lp = tokens[0];
@@ -167,6 +155,4 @@ int main()
     std::cout << "Liczba unikalnych par (szerokosc, dlugosc) wśród tych adresów: " << coordCount.size() << std::endl;
     std::cout << "Liczba powtarzających się par (szerokosc, dlugosc): " << totalDuplicates << std::endl;
 
-    return 0;
-}
-
+    retur
