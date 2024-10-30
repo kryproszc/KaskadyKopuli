@@ -1,5 +1,5 @@
-logProgress("Liczba elementów w generatedData przed zamianą współrzędnych: " + std::to_string(generatedData.size()));
-
+std::string message = "Liczba elementów w generatedData przed zamianą współrzędnych: " + std::to_string(generatedData.size());
+logProgress(message);
 
 #include <pqxx/pqxx>
 #include <future>
