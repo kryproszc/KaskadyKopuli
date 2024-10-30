@@ -1,85 +1,39 @@
-#include <pqxx/pqxx>
-#include <future>
-#include <random>
 #include <iostream>
 #include <filesystem>
-#include <vector>
 #include <fstream>
+#include <vector>
 #include <string>
-#include <utility>
 #include <map>
-#include <ostream>
 #include <set>
-#include <thread>
-#include <chrono>
-#include <tuple>
-#include <nlohmann/json.hpp> // Biblioteka JSON
+#include <utility>
+#include <sstream>
 
 #include "csvstream.hpp"
 
 namespace fs = std::filesystem;
-using json = nlohmann::json;
 
-fs::path path = "/mnt/c/Users/szczkr/test";
+fs::path path = "/mnt/c/Users/szczkr/test"; // Zmień na ścieżkę do katalogu z plikami CSV
 
-int numberOfDataPoints = 5000000; // 5 milionów danych
-size_t numThreads = 32;
-
-struct FileInfo
+struct Address
 {
-    fs::path path;
-    size_t startIndex;
-    size_t lineCount;
+    std::string lp;
+    std::string dataPoczatku;
+    std::string dataKonca;
+    std::string sumaUbezpieczenia;
+    std::string odnowienia;
+    std::string ulica;
+    std::string kodPocztowy;
+    std::string miasto;
+    std::string wojewodztwo;
+    std::string kraj;
+    std::string reasekuracjaO;
+    std::string reasekuracjaF;
+    std::string szerokosc; // Latitude
+    std::string dlugosc;   // Longitude
+    std::string flaga1;
+    std::string flaga2;
+    std::string nrwoj;
 };
-
-namespace Color
-{
-    enum Code
-    {
-        FG_RED = 31,
-        FG_GREEN = 32,
-        FG_YELLOW = 33,
-        FG_BLUE = 34,
-        FG_MAGENTA = 35,
-        FG_CYAN = 36,
-        FG_WHITE = 37,
-        FG_DEFAULT = 39,
-        BG_RED = 41,
-        BG_GREEN = 42,
-        BG_YELLOW = 43,
-        BG_BLUE = 44,
-        BG_MAGENTA = 45,
-        BG_CYAN = 46,
-        BG_WHITE = 47,
-        BG_DEFAULT = 49
-    };
-    class Modifier
-    {
-        Code code;
-
-    public:
-        Modifier(Code pCode) : code(pCode) {}
-        friend std::ostream &
-        operator<<(std::ostream &os, const Modifier &mod)
-        {
-            return os << "\033[" << mod.code << "m";
-        }
-    };
-}
-
-Color::Modifier red(Color::FG_RED);
-Color::Modifier def(Color::FG_DEFAULT);
-Color::Modifier green(Color::FG_GREEN);
-Color::Modifier blue(Color::FG_BLUE);
-Color::Modifier yellow(Color::FG_YELLOW);
-Color::Modifier magneta(Color::FG_MAGENTA);
-Color::Modifier cyan(Color::BG_CYAN);
-Color::Modifier deff(Color::BG_DEFAULT);
-
-void logProgress(const std::string &message)
-{
-    std::cout << red << "[INFO] " << def << message << std::endl;
-}
 
 std::string removeLastChar(const std::string &line)
 {
@@ -104,554 +58,99 @@ std::vector<fs::path> getCsvFiles(const fs::path &path)
     return csvFiles;
 }
 
-struct Address
+int main()
 {
-    std::string lp;
-    std::string dataPoczatku;
-    std::string dataKonca;
-    std::string sumaUbezpieczenia;
-    std::string odnowienia;
-    std::string ulica;
-    std::string kodPocztowy;
-    std::string miasto;
-    std::string wojewodztwo;
-    std::string kraj;
-    std::string reasekuracjaO;
-    std::string reasekuracjaF;
-    std::string szerokosc;
-    std::string dlugosc;
-    std::string flaga1;
-    std::string flaga2;
-    std::string nrwoj;
+    std::vector<Address> allAddresses;
 
-    std::string toString() const
-    {
-        return lp + ";" + dataPoczatku + ";" + dataKonca + ";" + sumaUbezpieczenia + ";" +
-               odnowienia + ";" + ulica + ";" + kodPocztowy + ";" + miasto + ";" +
-               wojewodztwo + ";" + kraj + ";" + reasekuracjaO + ";" + reasekuracjaF + ";" +
-               szerokosc + ";" + dlugosc + ";" + flaga1 + ";" + flaga2 + ";" + nrwoj;
-    }
-};
-
-std::vector<Address> toProcess;
-std::vector<Address> generatedData;
-
-std::vector<int> findDuplicateCoordinates(const std::vector<Address> &toProcess)
-{
-    std::map<std::pair<std::string, std::string>, std::set<int>> coordMap;
-    std::vector<int> duplicateIndices;
-
-    for (int i = 0; i < toProcess.size(); ++i)
-    {
-        const auto &address = toProcess[i];
-        if ((address.szerokosc == "brak danych" || address.flaga1 == "0" || address.flaga1 == "4" || address.flaga1 == "5" || address.flaga1 == "6") ||
-            ((address.flaga1 == "1" || address.flaga1 == "2" || address.flaga1 == "3") && address.flaga2 != "0"))
-        {
-            std::pair<std::string, std::string> coord(address.szerokosc, address.dlugosc);
-            coordMap[coord].insert(i);
-        }
-    }
-
-    for (const auto &entry : coordMap)
-    {
-        if (entry.second.size() > 1)
-        {
-            duplicateIndices.insert(duplicateIndices.end(), entry.second.begin(), entry.second.end());
-        }
-        else if (entry.second.size() == 1)
-        {
-            int firstIndex = *entry.second.begin();
-            if (toProcess[firstIndex].szerokosc == "brak danych")
-                duplicateIndices.insert(duplicateIndices.end(), entry.second.begin(), entry.second.end());
-        }
-    }
-
-    return duplicateIndices;
-}
-
-void add(const Address &pos)
-{
-    toProcess.push_back(pos);
-}
-
-void addGeneratedData(const Address &pos)
-{
-    generatedData.push_back(pos);
-}
-
-std::pair<std::string, int> getWojewodztwoMapa(const std::string &kodPocztowy)
-{
-    int kod;
-    try
-    {
-        kod = std::stoi(kodPocztowy.substr(0, 2)) * 1000;
-    }
-    catch (const std::invalid_argument &e)
-    {
-        return {"Nieznane województwo", 0};
-    }
-    catch (const std::out_of_range &e)
-    {
-        return {"Nieznane województwo", 0};
-    }
-
-    std::map<std::string, std::pair<int, int>> wojewodztwa = {
-        {"Dolnośląskie", {50000, 59999}},
-        {"Kujawsko-Pomorskie", {85000, 89999}},
-        {"Lubelskie", {20000, 23999}},
-        {"Lubuskie", {65000, 69999}},
-        {"Łódzkie", {90000, 99999}},
-        {"Małopolskie", {30000, 34999}},
-        {"Mazowieckie", {0, 9999}},
-        {"Opolskie", {45000, 49999}},
-        {"Podkarpackie", {35000, 39999}},
-        {"Podlaskie", {15000, 19999}},
-        {"Pomorskie", {80000, 84999}},
-        {"Śląskie", {40000, 44999}},
-        {"Świętokrzyskie", {25000, 29999}},
-        {"Warmińsko-Mazurskie", {10000, 14999}},
-        {"Wielkopolskie", {60000, 64999}},
-        {"Zachodniopomorskie", {70000, 78999}}};
-
-    int numer = 1;
-    for (const auto &woj : wojewodztwa)
-    {
-        if (kod >= woj.second.first && kod <= woj.second.second)
-        {
-            return {woj.first, numer};
-        }
-        ++numer;
-    }
-
-    return {"Nieznane województwo", 0};
-}
-
-void processChunk(const std::vector<Address> &generatedData, const std::vector<Address> &toProcess,
-                  std::vector<Address> &localResult, size_t start, size_t end)
-{
-    for (size_t i = start; i < end; ++i)
-    {
-        bool shouldErase = false;
-        for (const auto &process : toProcess)
-        {
-            if (generatedData[i].szerokosc == process.szerokosc && generatedData[i].dlugosc == process.dlugosc)
-            {
-                shouldErase = true;
-                break;
-            }
-        }
-        if (!shouldErase)
-        {
-            localResult.push_back(generatedData[i]);
-        }
-    }
-}
-
-void removeMatchingCoordinates(std::vector<Address> &generatedData, const std::vector<Address> &toProcess)
-{
-    size_t chunkSize = generatedData.size() / numThreads;
-    std::vector<std::thread> threads;
-    std::vector<std::vector<Address>> results(numThreads);
-
-    for (size_t i = 0; i < numThreads; ++i)
-    {
-        size_t start = i * chunkSize;
-        size_t end = (i == numThreads - 1) ? generatedData.size() : start + chunkSize;
-
-        threads.emplace_back(processChunk, std::cref(generatedData), std::cref(toProcess),
-                             std::ref(results[i]), start, end);
-    }
-
-    for (auto &thread : threads)
-    {
-        thread.join();
-    }
-
-    std::vector<Address> finalResult;
-    for (const auto &localResult : results)
-    {
-        finalResult.insert(finalResult.end(), localResult.begin(), localResult.end());
-    }
-
-    generatedData = finalResult;
-
-    // Sortowanie przed usunięciem duplikatów
-    std::sort(generatedData.begin(), generatedData.end(),
-              [](const Address &a, const Address &b)
-              {
-                  return std::tie(a.szerokosc, a.dlugosc) < std::tie(b.szerokosc, b.dlugosc);
-              });
-
-    // Usuwanie duplikatów
-    generatedData.erase(
-        std::unique(generatedData.begin(), generatedData.end(),
-                    [](const Address &a, const Address &b)
-                    {
-                        return a.szerokosc == b.szerokosc && a.dlugosc == b.dlugosc;
-                    }),
-        generatedData.end());
-
-    // Losowe wymieszanie danych po usunięciu duplikatów
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(generatedData.begin(), generatedData.end(), g);
-}
-
-void printAddresses(const std::vector<Address> &addresses, const std::string &title)
-{
-    std::cout << title << ":\n";
-    for (const auto &address : addresses)
-    {
-        std::cout << address.lp << ","
-                  << address.dataPoczatku << ","
-                  << address.dataKonca << ","
-                  << address.sumaUbezpieczenia << ","
-                  << address.odnowienia << ","
-                  << address.ulica << ","
-                  << address.kodPocztowy << ","
-                  << address.miasto << ","
-                  << address.wojewodztwo << ","
-                  << address.kraj << ","
-                  << address.reasekuracjaO << ","
-                  << address.reasekuracjaF << ","
-                  << address.szerokosc << ","
-                  << address.dlugosc << ","
-                  << address.flaga1 << ","
-                  << address.flaga2 << ","
-                  << address.nrwoj
-                  << "\n";
-    }
-    std::cout << std::endl;
-}
-
-int num_generated_data = 0;
-int max_num_generated_data = 0;
-int max_files = 0;
-int cur_fileProcessed = 0;
-int linesToConcatenate = 0;
-int concatenated_lines = 0;
-int loadedLines = 0;
-int max_duplicates = 0;
-int num_dupl = 0;
-
-std::vector<FileInfo> fileInfos;
-
-void processData()
-{
-    auto start = std::chrono::high_resolution_clock::now();
-    pqxx::connection c(
-        "dbname=nominatim user=nominatim password=nominatim host=localhost "
-        "port=5432");
-    pqxx::work txn(c);
-    std::cout << "Połączony z " << c.dbname() << '\n';
-
-    std::stringstream query;
-
-    // Zmienione zapytanie SQL z większym TABLESAMPLE
-    query << "SELECT DISTINCT \n"
-          << "    postcode, address,\n"
-          << "    ST_Y(ST_Centroid(centroid)) AS lat,\n"
-          << "    ST_X(ST_Centroid(centroid)) AS lon\n"
-          << "FROM \n"
-          << "    placex TABLESAMPLE SYSTEM (20)\n" // Pobiera około 20% tabeli
-          << "WHERE \n"
-          << "    address -> 'housenumber' IS NOT NULL AND \n"
-          << "    address -> 'housenumber' != ''\n"
-          << "LIMIT " << numberOfDataPoints << ";\n";
-
-    logProgress("Generowanie danych...");
-    pqxx::result r = txn.exec(query);
-
-    max_num_generated_data = r.size();
-
-    for (const auto &row : r)
-    {
-        std::string city, street, postcode, housenumber, place;
-
-        // Parsowanie pola 'address' jako JSON
-        std::string address_field = row["address"].c_str();
-        postcode = row["postcode"].c_str();
-        double lat = row["lat"].as<double>();
-        double lon = row["lon"].as<double>();
-
-        json address_json = json::parse(address_field);
-
-        if (address_json.contains("city"))
-            city = address_json["city"].get<std::string>();
-        else if (address_json.contains("town"))
-            city = address_json["town"].get<std::string>();
-        else if (address_json.contains("village"))
-            city = address_json["village"].get<std::string>();
-        else if (address_json.contains("hamlet"))
-            city = address_json["hamlet"].get<std::string>();
-
-        if (address_json.contains("street"))
-            street = address_json["street"].get<std::string>();
-
-        if (address_json.contains("housenumber"))
-            housenumber = address_json["housenumber"].get<std::string>();
-
-        if (address_json.contains("place"))
-            place = address_json["place"].get<std::string>();
-
-        if (city.empty())
-            city = place;
-
-        auto [wojewodztwo, nr_woj] = getWojewodztwoMapa(postcode);
-
-        addGeneratedData(Address{"", "", "", "", "", street + " " + housenumber, postcode, city, wojewodztwo,
-                                 "", "", "", std::to_string(lat), std::to_string(lon), "", "", std::to_string(nr_woj)});
-
-        num_generated_data++;
-    }
-    logProgress("Generowanie danych zakończone.");
-
+    // Wczytywanie plików CSV
     std::vector<fs::path> csvFiles = getCsvFiles(path);
 
-    std::vector<std::string> allLines;
-    std::string firstFileHeader;
-
-    max_files = csvFiles.size();
-
-    for (size_t fileIndex = 0; fileIndex < csvFiles.size(); ++fileIndex)
+    for (const auto &filePath : csvFiles)
     {
-        const auto &filePath = csvFiles[fileIndex];
-        logProgress("Przetwarzanie pliku: " + filePath.string());
-
-        cur_fileProcessed = fileIndex + 1;
+        std::cout << "Wczytywanie pliku: " << filePath.string() << std::endl;
 
         std::ifstream file(filePath);
         if (file.is_open())
         {
-            FileInfo info;
-            info.path = filePath;
-            info.startIndex = allLines.size();
-            info.lineCount = 0;
-
             std::string line;
             bool isFirstLine = true;
             while (std::getline(file, line))
             {
-                if (fileIndex == 0)
+                if (isFirstLine)
                 {
-
-                    if (isFirstLine)
-                    {
-                        firstFileHeader = line;
-                        isFirstLine = false;
-                        allLines.push_back(line);
-                    }
-                    else
-                    {
-                        line = removeLastChar(line);
-
-                        allLines.push_back(line);
-                    }
-
-                    info.lineCount++;
+                    isFirstLine = false; // Pomijamy nagłówek
+                    continue;
                 }
                 else
                 {
+                    line = removeLastChar(line); // Usuwamy ewentualne znaki końca linii
+                    std::istringstream iss(line);
+                    std::string token;
+                    std::vector<std::string> tokens;
 
-                    if (isFirstLine)
+                    while (std::getline(iss, token, ';'))
                     {
-                        isFirstLine = false;
-                        continue;
+                        tokens.push_back(token);
                     }
-                    line = removeLastChar(line);
 
-                    allLines.push_back(line);
-                    info.lineCount++;
+                    if (tokens.size() >= 17)
+                    {
+                        Address addr;
+                        addr.lp = tokens[0];
+                        addr.dataPoczatku = tokens[1];
+                        addr.dataKonca = tokens[2];
+                        addr.sumaUbezpieczenia = tokens[3];
+                        addr.odnowienia = tokens[4];
+                        addr.ulica = tokens[5];
+                        addr.kodPocztowy = tokens[6];
+                        addr.miasto = tokens[7];
+                        addr.wojewodztwo = tokens[8];
+                        addr.kraj = tokens[9];
+                        addr.reasekuracjaO = tokens[10];
+                        addr.reasekuracjaF = tokens[11];
+                        addr.szerokosc = tokens[12];
+                        addr.dlugosc = tokens[13];
+                        addr.flaga1 = tokens[14];
+                        addr.flaga2 = tokens[15];
+                        addr.nrwoj = tokens[16];
+
+                        allAddresses.push_back(addr);
+                    }
+                    else
+                    {
+                        std::cerr << "Nieprawidłowy format linii w pliku " << filePath.string() << ": " << line << std::endl;
+                    }
                 }
             }
-
-            fileInfos.push_back(info);
             file.close();
         }
         else
         {
-            std::cerr << "Nie można otworzyć pliku: " << filePath.string() << '\n';
+            std::cerr << "Nie można otworzyć pliku: " << filePath.string() << std::endl;
         }
     }
 
-    std::string csv_data;
+    // Wykrywanie duplikatów par (szerokosc, dlugosc)
+    std::map<std::pair<std::string, std::string>, int> coordCount;
+    int totalDuplicates = 0;
 
-    linesToConcatenate = allLines.size();
-    for (const auto &line : allLines)
+    for (const auto &addr : allAddresses)
     {
-        csv_data += line + "\n";
-
-        concatenated_lines++;
+        auto coord = std::make_pair(addr.szerokosc, addr.dlugosc);
+        coordCount[coord]++;
     }
-    std::istringstream iss(csv_data);
 
-    csvstream csv(iss);
-    std::vector<std::pair<std::string, std::string>> row;
-
-    loadedLines = 1;
-    while (csv >> row)
+    for (const auto &entry : coordCount)
     {
-        std::string lp = row[0].second;
-        std::string datapoczatku = row[1].second;
-        std::string datakonca = row[2].second;
-        std::string sumaUbezpieczenia = row[3].second;
-        std::string odnowienia = row[4].second;
-        std::string ulica = row[5].second;
-        std::string kodPocztowy = row[6].second;
-        std::string miasto = row[7].second;
-        std::string wojewodztwo = row[8].second;
-        std::string kraj = row[9].second;
-        std::string reasekuracjaO = row[10].second;
-        std::string reasekuracjaF = row[11].second;
-        std::string szerokosc = row[12].second;
-        std::string dlugosc = row[13].second;
-        std::string flaga1 = row[14].second;
-        std::string flaga2 = row[15].second;
-        std::string nr_woj = row[16].second;
-
-        add(Address{lp, datapoczatku, datakonca, sumaUbezpieczenia, odnowienia, ulica, kodPocztowy, miasto, wojewodztwo,
-                    kraj, reasekuracjaO, reasekuracjaF, szerokosc, dlugosc, flaga1, flaga2, nr_woj});
-
-        loadedLines++;
-    }
-
-    logProgress("Usuwanie duplikatów współrzędnych...");
-    removeMatchingCoordinates(generatedData, toProcess);
-    logProgress("Duplikaty usunięte.");
-
-    std::vector<int> duplicates = findDuplicateCoordinates(toProcess);
-
-    // Przygotowanie do zastępowania duplikatów bez powtórzeń
-    size_t generatedDataIndex = 0;
-    std::random_device rd;
-    std::mt19937 g(rd());
-
-    max_duplicates = duplicates.size();
-    for (int index : duplicates)
-    {
-        if (generatedDataIndex >= generatedData.size())
+        if (entry.second > 1)
         {
-            // Wszystkie elementy zostały użyte; ponownie wymieszaj dane i zacznij od początku
-            std::shuffle(generatedData.begin(), generatedData.end(), g);
-            generatedDataIndex = 0;
-        }
-
-        const Address &element = generatedData[generatedDataIndex++];
-
-        toProcess[index].ulica = element.ulica;
-        toProcess[index].miasto = element.miasto;
-        toProcess[index].kodPocztowy = element.kodPocztowy;
-        toProcess[index].wojewodztwo = element.wojewodztwo;
-        toProcess[index].szerokosc = element.szerokosc;
-        toProcess[index].dlugosc = element.dlugosc;
-        toProcess[index].nrwoj = element.nrwoj;
-
-        num_dupl++;
-    }
-
-    for (size_t fileIndex = 0; fileIndex < fileInfos.size(); ++fileIndex)
-    {
-        const auto &info = fileInfos[fileIndex];
-        fs::path newFilePath = info.path;
-        newFilePath.replace_filename(info.path.stem().string() + "_final" + info.path.extension().string());
-
-        logProgress("Zapisywanie do pliku: " + newFilePath.string());
-        std::ofstream outFile(newFilePath);
-        if (outFile.is_open())
-        {
-
-            outFile << firstFileHeader << '\n';
-
-            if (fileIndex == 0)
-            {
-                for (size_t i = info.startIndex; i < info.startIndex + info.lineCount - 1; ++i)
-                {
-
-                    outFile << toProcess[i].toString() << '\n';
-                }
-            }
-            else
-            {
-                for (size_t i = info.startIndex - 1; i < info.startIndex - 1 + info.lineCount; ++i)
-                {
-
-                    outFile << toProcess[i].toString() << '\n';
-                }
-            }
-            outFile.close();
-            std::cout << "Zapisano do pliku: " << newFilePath.string() << '\n';
-        }
-        else
-        {
-            std::cerr << "Nie można zapisać do pliku: " << newFilePath.string() << '\n';
+            totalDuplicates += (entry.second - 1);
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
-    std::cout << red << "[INFO] " << green << "PROGRAM ZAKOŃCZYŁ SWOJE DZIAŁANIE. MOŻESZ Z NIEGO WYJŚĆ" << def << std::endl;
-    std::cout << cyan << "Czas przetwarzania: " << elapsed.count() << " sekund." << deff << std::endl;
-}
-
-int main()
-{
-    bool exit = false;
-    std::thread processingThread;
-
-    while (!exit)
-    {
-        std::cout << "Wybierz opcję:\n";
-        std::cout << "1. Rozpocznij przetwarzanie danych\n";
-        std::cout << "2. Pokaż postęp prac\n";
-        std::cout << "3. Pokaż na jakie segmenty został podzielony kontener\n";
-        std::cout << "4. Wyjdź\n";
-        int choice;
-        std::cin >> choice;
-
-        switch (choice)
-        {
-        case 1:
-        {
-            if (!processingThread.joinable())
-            {
-                processingThread = std::thread(processData);
-            }
-            else
-            {
-                std::cout << red << "Przetwarzanie danych jest już w toku.\n"
-                          << def;
-            }
-            break;
-        }
-        case 2:
-            std::cout << magneta << "[STATUS] Postęp w przetwarzaniu danych:" << def << std::endl;
-            std::cout << yellow << "  - Liczba wygenerowanych danych: " << std::to_string(num_generated_data) << "/" << std::to_string(max_num_generated_data) << def << std::endl;
-            std::cout << yellow << "  - Obecnie przetwarzany plik: " << std::to_string(cur_fileProcessed) << "/" << std::to_string(max_files) << def << std::endl;
-            std::cout << yellow << "  - Budowanie wspólnego pliku: " << std::to_string(concatenated_lines) << "/" << std::to_string(linesToConcatenate) << def << std::endl;
-            std::cout << yellow << "  - Wczytane rekordy z pliku: " << std::to_string(loadedLines) << "/" << std::to_string(linesToConcatenate) << def << std::endl;
-            std::cout << yellow << "  - Liczba przetworzonych duplikatów: " << std::to_string(num_dupl) << "/" << std::to_string(max_duplicates) << def << std::endl;
-            break;
-        case 3:
-            for (const auto &info : fileInfos)
-            {
-                std::cout << blue << "Plik: " << info.path.string()
-                          << ", Start Index: " << info.startIndex
-                          << ", Line Count: " << info.lineCount << '\n'
-                          << def;
-            }
-            break;
-        case 4:
-            exit = true;
-            if (processingThread.joinable())
-            {
-                processingThread.join();
-            }
-            break;
-        default:
-            std::cout << "Nieprawidłowa opcja, spróbuj ponownie.\n";
-            break;
-        }
-    }
+    std::cout << "Łączna liczba rekordów: " << allAddresses.size() << std::endl;
+    std::cout << "Liczba unikalnych par (szerokosc, dlugosc): " << coordCount.size() << std::endl;
+    std::cout << "Liczba powtarzających się par (szerokosc, dlugosc): " << totalDuplicates << std::endl;
 
     return 0;
 }
