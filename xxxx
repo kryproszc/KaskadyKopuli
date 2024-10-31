@@ -1,16 +1,25 @@
+oblicz_kwantyle <- function(df) {
+  # Używamy funkcji lapply, aby obliczyć kwantyle dla każdej kolumny
+  kwantyle_dla_kolumn <- lapply(names(df), function(nazwa_kolumny) {
+    kolumna <- df[[nazwa_kolumny]]
+    if (is.numeric(kolumna)) {
+      quantile(kolumna, probs = c(0, 0.25, 0.5, 0.75, 1))
+    } else {
+      NA  # Zwróć NA, jeśli kolumna nie jest numeryczna
+    }
+  })
+
+  # Nadajemy nazwę kolumnom na podstawie oryginalnych nazw kolumn w df
+  names(kwantyle_dla_kolumn) <- names(df)
+
+  # Konwertujemy wynik do formatu data frame dla czytelności
+  kwantyle_dla_kolumn_df <- as.data.frame(kwantyle_dla_kolumn)
+
+  # Zwracamy wynik
+  return(kwantyle_dla_kolumn_df)
+}
+
+# Przykład użycia
 # Załóżmy, że Twój dataframe nazywa się "df"
-
-# Używamy funkcji lapply, aby obliczyć kwantyle dla każdej kolumny
-kwantyle_dla_kolumn <- lapply(df, function(kolumna) {
-  if (is.numeric(kolumna)) {
-    quantile(kolumna, probs = c(0, 0.25, 0.5, 0.75, 1))
-  } else {
-    NA  # Zwróć NA, jeśli kolumna nie jest numeryczna
-  }
-})
-
-# Konwertujemy wynik do formatu data frame dla czytelności
-kwantyle_dla_kolumn_df <- as.data.frame(kwantyle_dla_kolumn)
-
-# Wyświetlamy wynik
+kwantyle_dla_kolumn_df <- oblicz_kwantyle(df)
 print(kwantyle_dla_kolumn_df)
