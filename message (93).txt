@@ -1,61 +1,31 @@
-std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<double> data_input,
-    std::vector<double> insurance, std::vector<double> reas_input, double kat_val, int ilosc_ubezpieczycieli,
-    int insurancer, double wielkosc_pozar_kwota)
+for (int i = 0; i < ilosc_ubezpieczycieli; i++)
 {
- 
-   
-
-    std::vector<std::vector<std::vector<double>>> out_final(9);
-    std::vector<std::vector<double>> out_brutto(ilosc_ubezpieczycieli);
-    std::vector<std::vector<double>> out_kat_brutto(ilosc_ubezpieczycieli);
-    std::vector<std::vector<double>> ind_brutto(ilosc_ubezpieczycieli);
-    std::vector<std::vector<double>> ind_kat_brutto(ilosc_ubezpieczycieli);
-    std::vector<std::vector<double>> out_sum_brutto(ilosc_ubezpieczycieli);
-    std::vector<std::vector<double>> out_sum_kat_brutto(ilosc_ubezpieczycieli);
-    std::vector<std::vector<double>> out_reas_standard(ilosc_ubezpieczycieli);
-    std::vector<std::vector<double>> out_reas_kat(ilosc_ubezpieczycieli);
-    std::vector<double> wielkosc_pozar_kwota_output(2);
-
-    int ind_next = 0;
-
-    for (auto it = std::begin(insurance); it != std::end(insurance); ++it)
+    if (!out_brutto[i].empty()) 
     {
-        int insurer_index = static_cast<int>(*it);
-        if (insurer_index >= 0 && insurer_index < ilosc_ubezpieczycieli && ind_next < data_input.size() && ind_next < reas_input.size()) {
-            out_brutto[insurer_index].push_back(data_input[ind_next]);
-            ind_brutto[insurer_index].push_back(ind_next);
-            out_reas_standard[insurer_index].push_back(reas_input[ind_next]);
-        }
-   
-        ind_next += 1;
-    }
+        double sum_brutto = accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
 
-    for (int i = 0; i < ilosc_ubezpieczycieli; i++)
-    {
-        double suma_insurancer = 0.0;
-        if (!out_brutto[i].empty()) 
+        // Dodajemy wielkosc_pozar_kwota jeśli to jest ubezpieczyciel `insurancer`
+        if (i == insurancer)
         {
-            double sum_brutto = accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
-            out_sum_brutto[i].push_back(sum_brutto);
-            if (i == insurancer)
-            {
-                sum_brutto += wielkosc_pozar_kwota;
-            }
+            sum_brutto += wielkosc_pozar_kwota;
+        }
 
-            std::cerr << sum_brutto << "\n";
+        // Zapisz sumę brutto
+        out_sum_brutto[i].push_back(sum_brutto);
 
+        // Sprawdzenie, czy suma przekracza kat_val
+        if (sum_brutto > kat_val)
+        {
+            out_kat_brutto[i] = out_brutto[i];  // Przypisujemy całą listę wartości do out_kat_brutto
+            ind_kat_brutto[i] = ind_brutto[i];  // Przypisujemy indeksy dla wartości katastroficznych
+            out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
+            out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
+        }
+
+        // Ustawienie wartości wielkosc_pozar_kwota_output
+        if (i == insurancer)
+        {
             if (sum_brutto > kat_val)
-            {
-                suma_insurancer = sum_brutto;
-                out_kat_brutto[i] = out_brutto[i];  
-                ind_kat_brutto[i] = ind_brutto[i]; 
-                out_reas_kat[i] = out_reas_standard[i];  
-            }
-            else {
-                out_kat_brutto[i] = { 0 };
-                out_sum_kat_brutto[i].push_back(0);
-            }
-            if ((i == insurancer) && (sum_brutto > kat_val))
             {
                 wielkosc_pozar_kwota_output[0] = insurancer;
                 wielkosc_pozar_kwota_output[1] = wielkosc_pozar_kwota;
@@ -67,20 +37,4 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
             }
         }
     }
-
-
-    out_final[0] = out_brutto;
-    out_final[1] = out_kat_brutto;
-    out_final[2] = out_sum_brutto;
-    out_final[3] = out_sum_kat_brutto;
-    out_final[4] = ind_brutto;
-    out_final[5] = ind_kat_brutto;
-    out_final[6] = out_reas_standard;
-    out_final[7] = out_reas_kat;
-    out_final[8] = { wielkosc_pozar_kwota_output };
-
-
-
-    return (out_final);
-
 }
