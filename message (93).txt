@@ -1,4 +1,11 @@
-std::vector<std::vector<std::vector<double>>> out_final(9);
+std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<double> data_input,
+    std::vector<double> insurance, std::vector<double> reas_input, double kat_val, int ilosc_ubezpieczycieli,
+    int insurancer, double wielkosc_pozar_kwota)
+{
+ 
+   
+
+    std::vector<std::vector<std::vector<double>>> out_final(9);
     std::vector<std::vector<double>> out_brutto(ilosc_ubezpieczycieli);
     std::vector<std::vector<double>> out_kat_brutto(ilosc_ubezpieczycieli);
     std::vector<std::vector<double>> ind_brutto(ilosc_ubezpieczycieli);
@@ -77,5 +84,3 @@ std::vector<std::vector<std::vector<double>>> out_final(9);
     return (out_final);
 
 }
-ChatGPT powiedział:
-ChatGPT
