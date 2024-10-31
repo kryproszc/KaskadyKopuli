@@ -28,7 +28,8 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
                 out_brutto[insurer_index].push_back(data_input[ind_next]);
                 ind_brutto[insurer_index].push_back(ind_next);
                 out_reas_standard[insurer_index].push_back(reas_input[ind_next]);
-            } else {
+            }
+            else {
                 std::cerr << "Błąd: Indeks ubezpieczyciela poza zakresem lub dane wejściowe są nieprawidłowe.\n";
             }
             ind_next += 1;
@@ -55,7 +56,8 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
                     out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
                     out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
                 }
-            } else {
+            }
+            else {
                 std::cerr << "Ostrzeżenie: Brak danych do obliczeń dla ubezpieczyciela " << i << ".\n";
             }
         }
@@ -64,7 +66,8 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
         double suma_insurancer = 0.0;
         if (insurancer >= 0 && insurancer < out_sum_brutto.size() && !out_sum_brutto[insurancer].empty()) {
             suma_insurancer = out_sum_brutto[insurancer][0];
-        } else {
+        }
+        else {
             std::cerr << "Błąd: Nieprawidłowy dostęp do out_sum_brutto dla insurancer: " << insurancer << "\n";
         }
 
@@ -87,7 +90,7 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
         out_final[5] = ind_kat_brutto;
         out_final[6] = out_reas_standard;
         out_final[7] = out_reas_kat;
-        out_final[8] = {wielkosc_pozar_kwota_output};
+        out_final[8] = { wielkosc_pozar_kwota_output };
     }
     catch (const std::exception& e) {
         std::cerr << "Wystąpił wyjątek: " << e.what() << "\n";
@@ -104,13 +107,13 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
 
 int main() {
     // Przykładowe dane wejściowe do przetestowania funkcji
-    std::vector<double> data_input = {50000.0, 150000.0, 700000.0, 2000000.0, 50000000.0, 100000000.0, 30000.0, 15000000.0, 2000000.0, 400000.0};
-    std::vector<double> insurance = {0, 1, 2, 1, 0, 2, 1, 0, 2, 1};
-    std::vector<double> reas_input = {1000.0, 5000.0, 20000.0, 5000.0, 200000.0, 500000.0, 300.0, 15000.0, 200000.0, 40000.0};
+    std::vector<double> data_input = { 50.0, 150.0, 70.0, 20.0, 50.0, 10.0, 30.0, 10.0, 20.0, 5 };
+    std::vector<double> insurance = { 0, 1, 2, 1, 0, 2, 1, 0, 2, 1 };
+    std::vector<double> reas_input = { 1000.0, 5000.0, 20000.0, 5000.0, 200000.0, 500000.0, 300.0, 15000.0, 200000.0, 40000.0 };
     double kat_val = 1000000.0;  // Duża wartość graniczna, aby przetestować zachowanie przy przekraczaniu wartości katastroficznej
     int ilosc_ubezpieczycieli = 3;  // Liczba ubezpieczycieli
     int insurancer = 1;  // Ubezpieczyciel dla którego dodajemy wielkosc_pozar_kwota
-    double wielkosc_pozar_kwota = 5000000.0;  // Duża kwota do przetestowania sumowania wartości katastroficznych
+    double wielkosc_pozar_kwota =100;  // Duża kwota do przetestowania sumowania wartości katastroficznych
 
     // Wywołanie funkcji calc_brutto_ring
     std::vector<std::vector<std::vector<double>>> result = calc_brutto_ring(data_input, insurance, reas_input, kat_val, ilosc_ubezpieczycieli, insurancer, wielkosc_pozar_kwota);
