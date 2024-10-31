@@ -1,3 +1,7 @@
+#include <vector>
+#include <numeric> // for accumulate
+#include <iostream> // for printing results
+
 std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<double> data_input,
     std::vector<double> insurance, std::vector<double> reas_input, double kat_val, int ilosc_ubezpieczycieli)
 {
@@ -15,24 +19,28 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
 
     for (auto it = std::begin(insurance); it != std::end(insurance); ++it)
     {
-        out_brutto[*it].push_back(data_input[ind_next]);
-        ind_brutto[*it].push_back(ind_next);
-        out_reas_standard[*it].push_back(reas_input[ind_next]);
-        if (data_input[ind_next] > kat_val)
-        {
-            out_kat_brutto[*it].push_back(data_input[ind_next]);
-            ind_kat_brutto[*it].push_back(ind_next);
-            out_reas_kat[*it].push_back(reas_input[ind_next]);
-        }
+        int insurer_index = static_cast<int>(*it);
+        out_brutto[insurer_index].push_back(data_input[ind_next]);
+        ind_brutto[insurer_index].push_back(ind_next);
+        out_reas_standard[insurer_index].push_back(reas_input[ind_next]);
         ind_next += 1;
     }
+
     for (int i = 0; i < ilosc_ubezpieczycieli; i++)
     {
         double sum_brutto = accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
-        double sum_kat_brutto = accumulate(out_kat_brutto[i].begin(), out_kat_brutto[i].end(), 0.0);
         out_sum_brutto[i].push_back(sum_brutto);
-        out_sum_kat_brutto[i].push_back(sum_kat_brutto);
+
+        // Sprawdzenie, czy suma wartości jest większa niż kat_val
+        if (sum_brutto > kat_val)
+        {
+            out_kat_brutto[i] = out_brutto[i];  // Przypisujemy całą listę wartości do out_kat_brutto
+            ind_kat_brutto[i] = ind_brutto[i];  // Przypisujemy indeksy dla wartości katastroficznych
+            out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
+            out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
+        }
     }
+
     out_final[0] = out_brutto;
     out_final[1] = out_kat_brutto;
     out_final[2] = out_sum_brutto;
@@ -41,5 +49,32 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
     out_final[5] = ind_kat_brutto;
     out_final[6] = out_reas_standard;
     out_final[7] = out_reas_kat;
+
     return (out_final);
+}
+
+int main() {
+    // Przykładowe dane wejściowe
+    std::vector<double> data_input = {100.0, 200.0, 300.0, 400.0, 500.0, 600.0};
+    std::vector<double> insurance = {0, 1, 2, 0, 1, 2};
+    std::vector<double> reas_input = {10.0, 20.0, 30.0, 40.0, 50.0, 60.0};
+    double kat_val = 500.0;
+    int ilosc_ubezpieczycieli = 3;
+
+    // Wywołanie funkcji calc_brutto_ring
+    std::vector<std::vector<std::vector<double>>> result = calc_brutto_ring(data_input, insurance, reas_input, kat_val, ilosc_ubezpieczycieli);
+
+    // Wypisanie wyników
+    for (int i = 0; i < result.size(); ++i) {
+        std::cout << "Result vector " << i << ":\n";
+        for (int j = 0; j < result[i].size(); ++j) {
+            std::cout << "  Insurer " << j << ": ";
+            for (double val : result[i][j]) {
+                std::cout << val << " ";
+            }
+            std::cout << "\n";
+        }
+    }
+
+    return 0;
 }
