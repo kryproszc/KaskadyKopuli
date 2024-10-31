@@ -1,10 +1,7 @@
 #include <vector>
 #include <numeric> // for accumulate
 #include <iostream> // for printing results
-#include <mutex> // for mutex
 #include <exception> // for exception handling
-
-std::mutex mtx;  // Mutex for thread safety
 
 std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<double> data_input,
     std::vector<double> insurance, std::vector<double> reas_input, double kat_val, int ilosc_ubezpieczycieli,
@@ -47,19 +44,15 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
                 sum_brutto += wielkosc_pozar_kwota;
             }
 
-            // Sekcja krytyczna - użycie mutexu do ochrony
-            {
-                std::lock_guard<std::mutex> lock(mtx);
-                out_sum_brutto[i].push_back(sum_brutto);
+            out_sum_brutto[i].push_back(sum_brutto);
 
-                // Sprawdzenie, czy suma wartości jest większa niż kat_val
-                if (sum_brutto > kat_val && !out_brutto[i].empty())
-                {
-                    out_kat_brutto[i] = out_brutto[i];  // Przypisujemy całą listę wartości do out_kat_brutto
-                    ind_kat_brutto[i] = ind_brutto[i];  // Przypisujemy indeksy dla wartości katastroficznych
-                    out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
-                    out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
-                }
+            // Sprawdzenie, czy suma wartości jest większa niż kat_val
+            if (sum_brutto > kat_val && !out_brutto[i].empty())
+            {
+                out_kat_brutto[i] = out_brutto[i];  // Przypisujemy całą listę wartości do out_kat_brutto
+                ind_kat_brutto[i] = ind_brutto[i];  // Przypisujemy indeksy dla wartości katastroficznych
+                out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
+                out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
             }
         }
 
