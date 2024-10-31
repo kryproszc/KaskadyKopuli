@@ -1,40 +1,69 @@
-for (int i = 0; i < ilosc_ubezpieczycieli; i++)
+std::vector<std::vector<std::vector<double>>> calc_brutto_ring(const std::vector<double>& data_input,
+                                                               const std::vector<double>& insurance,
+                                                               const std::vector<double>& reas_input,
+                                                               double kat_val, int ilosc_ubezpieczycieli,
+                                                               int insurancer, double wielkosc_pozar_kwota) 
 {
-    if (!out_brutto[i].empty()) 
-    {
-        double sum_brutto = accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
+    // Przygotowanie pustych wektorów wynikowych
+    std::vector<std::vector<std::vector<double>>> out_final(9);
+    std::vector<std::vector<double>> out_brutto(ilosc_ubezpieczycieli), out_kat_brutto(ilosc_ubezpieczycieli);
+    std::vector<std::vector<double>> ind_brutto(ilosc_ubezpieczycieli), ind_kat_brutto(ilosc_ubezpieczycieli);
+    std::vector<std::vector<double>> out_sum_brutto(ilosc_ubezpieczycieli), out_sum_kat_brutto(ilosc_ubezpieczycieli);
+    std::vector<std::vector<double>> out_reas_standard(ilosc_ubezpieczycieli), out_reas_kat(ilosc_ubezpieczycieli);
+    std::vector<double> wielkosc_pozar_kwota_output(2);
 
-        // Dodajemy wielkosc_pozar_kwota jeśli to jest ubezpieczyciel `insurancer`
-        if (i == insurancer)
-        {
-            sum_brutto += wielkosc_pozar_kwota;
+    int ind_next = 0;
+
+    // Przypisywanie wartości do odpowiednich ubezpieczycieli
+    for (size_t i = 0; i < insurance.size(); ++i) {
+        int insurer_index = static_cast<int>(insurance[i]);
+        if (insurer_index >= 0 && insurer_index < ilosc_ubezpieczycieli && ind_next < data_input.size() && ind_next < reas_input.size()) {
+            out_brutto[insurer_index].push_back(data_input[ind_next]);
+            ind_brutto[insurer_index].push_back(ind_next);
+            out_reas_standard[insurer_index].push_back(reas_input[ind_next]);
+        }
+        ind_next++;
+    }
+
+    // Obliczanie sum i wartości katastroficznych
+    for (int i = 0; i < ilosc_ubezpieczycieli; i++) {
+        if (out_brutto[i].empty()) {
+            out_kat_brutto[i] = { 0 };
+            out_sum_kat_brutto[i].push_back(0);
+            continue;
         }
 
-        // Zapisz sumę brutto
+        double sum_brutto = std::accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
+        
+        // Jeśli obecny ubezpieczyciel to insurancer, dodaj wielkosc_pozar_kwota do sumy
+        if (i == insurancer) {
+            sum_brutto += wielkosc_pozar_kwota;
+        }
         out_sum_brutto[i].push_back(sum_brutto);
 
-        // Sprawdzenie, czy suma przekracza kat_val
-        if (sum_brutto > kat_val)
-        {
-            out_kat_brutto[i] = out_brutto[i];  // Przypisujemy całą listę wartości do out_kat_brutto
-            ind_kat_brutto[i] = ind_brutto[i];  // Przypisujemy indeksy dla wartości katastroficznych
-            out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
-            out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
+        // Weryfikacja, czy suma przekracza wartość katastroficzną
+        if (sum_brutto > kat_val) {
+            out_kat_brutto[i] = out_brutto[i];
+            ind_kat_brutto[i] = ind_brutto[i];
+            out_reas_kat[i] = out_reas_standard[i];
+            out_sum_kat_brutto[i].push_back(sum_brutto);
+        } else {
+            out_kat_brutto[i] = { 0 };
+            out_sum_kat_brutto[i].push_back(0);
         }
 
         // Ustawienie wartości wielkosc_pozar_kwota_output
-        if (i == insurancer)
-        {
-            if (sum_brutto > kat_val)
-            {
-                wielkosc_pozar_kwota_output[0] = insurancer;
-                wielkosc_pozar_kwota_output[1] = wielkosc_pozar_kwota;
-            }
-            else
-            {
-                wielkosc_pozar_kwota_output[0] = insurancer;
-                wielkosc_pozar_kwota_output[1] = 0;
-            }
+        if ((i == insurancer) && (sum_brutto > kat_val)) {
+            wielkosc_pozar_kwota_output = { static_cast<double>(insurancer), wielkosc_pozar_kwota };
+        } else {
+            wielkosc_pozar_kwota_output = { static_cast<double>(insurancer), 0 };
         }
     }
+
+    // Przygotowanie ostatecznego wyniku
+    out_final = { out_brutto, out_kat_brutto, out_sum_brutto, out_sum_kat_brutto,
+                  ind_brutto, ind_kat_brutto, out_reas_standard, out_reas_kat,
+                  { wielkosc_pozar_kwota_output } };
+
+    return out_final;
 }
