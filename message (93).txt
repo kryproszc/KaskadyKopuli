@@ -1,6 +1,9 @@
 #include <vector>
 #include <numeric> // for accumulate
 #include <iostream> // for printing results
+#include <mutex> // for mutex
+
+std::mutex mtx;  // Mutex for thread safety
 
 std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<double> data_input,
     std::vector<double> insurance, std::vector<double> reas_input, double kat_val, int ilosc_ubezpieczycieli,
@@ -30,27 +33,35 @@ std::vector<std::vector<std::vector<double>>> calc_brutto_ring(std::vector<doubl
 
     for (int i = 0; i < ilosc_ubezpieczycieli; i++)
     {
-        double sum_brutto = accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
+        double sum_brutto = std::accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
 
         // Jeśli obecny ubezpieczyciel to insurancer, dodaj wielkosc_pozar_kwota do sumy
         if (i == insurancer)
         {
             sum_brutto += wielkosc_pozar_kwota;
         }
-        out_sum_brutto[i].push_back(sum_brutto);
 
-        // Sprawdzenie, czy suma wartości jest większa niż kat_val
-        if (sum_brutto > kat_val)
+        // Sekcja krytyczna - użycie mutexu do ochrony
         {
-            out_kat_brutto[i] = out_brutto[i];  // Przypisujemy całą listę wartości do out_kat_brutto
-            ind_kat_brutto[i] = ind_brutto[i];  // Przypisujemy indeksy dla wartości katastroficznych
-            out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
-            out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
+            std::lock_guard<std::mutex> lock(mtx);
+            out_sum_brutto[i].push_back(sum_brutto);
+
+            // Sprawdzenie, czy suma wartości jest większa niż kat_val
+            if (sum_brutto > kat_val)
+            {
+                out_kat_brutto[i] = out_brutto[i];  // Przypisujemy całą listę wartości do out_kat_brutto
+                ind_kat_brutto[i] = ind_brutto[i];  // Przypisujemy indeksy dla wartości katastroficznych
+                out_reas_kat[i] = out_reas_standard[i];  // Przypisujemy odpowiednie wartości reasekuracji
+                out_sum_kat_brutto[i].push_back(sum_brutto);  // Dodajemy sumę wartości katastroficznych
+            }
         }
     }
 
     // Określenie wartości wielkosc_pozar_kwota_output na podstawie sumy dla insurancer
-    double suma_insurancer = out_sum_brutto[insurancer][0];
+    double suma_insurancer = 0.0;
+    if (!out_sum_brutto[insurancer].empty()) {
+        suma_insurancer = out_sum_brutto[insurancer][0];
+    }
     if (suma_insurancer > kat_val)
     {
         wielkosc_pozar_kwota_output[0] = insurancer;
