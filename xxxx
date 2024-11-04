@@ -1,40 +1,16 @@
-#include <cmath>   // Do funkcji exp() i pow()
-#include <vector>  // Do przechowywania parametrów
-#include <iostream>  // Do wypisywania wyników
+                    conditional_mean[j] = conditional_mean_trend_parameters[0] * std::pow(exposure_number - 1, conditional_mean_trend_parameters[1]);
+                    alpha[j] = conditional_mean[j] * (exposure_number - 1 - conditional_mean[j] - conditional_Cov[1]) / (conditional_mean[j] + (exposure_number - 1) * (conditional_Cov[1] - 1));
+                    beta[j] = (exposure_number - 1 - conditional_mean[j]) * (exposure_number - 1 - conditional_mean[j] - conditional_Cov[1]) / (conditional_mean[j] + (exposure_number - 1) * (conditional_Cov[1] - 1));
 
-// Funkcja licząca mean_spread_function
-double mean_spread_function(double ring, double exposure, const std::vector<double>& mu_spread_parameters) {
-    return exposure / (1 + std::exp(-mu_spread_parameters[0]) * 
-                              std::pow(ring, -mu_spread_parameters[1]) * 
-                              std::pow(exposure, -mu_spread_parameters[2]));
-}
+                    number_of_fire_spreads[j] = 1 + randBin(exposure_number - 1, simulated_probability[j]);
+                    fire_spreads_rings_list[j] = sample_vec(ring_exposure_list, number_of_fire_spreads[j]);
 
-// Funkcja licząca var_spread_function
-double var_spread_function(double ring, double exposure, const std::vector<double>& mu_spread_parameters, const std::vector<double>& sigma_spread_parameters) {
-    double mean_spread = mean_spread_function(ring, exposure, mu_spread_parameters);
-    
-    return mean_spread * (1 - mean_spread / exposure) * 
-           (1 + (exposure - 1) / 
-           (1 + std::exp(-sigma_spread_parameters[0]) * 
-                std::pow(ring, -sigma_spread_parameters[1]) * 
-                std::pow(exposure, -sigma_spread_parameters[2])));
-}
 
-int main() {
-    // Przykładowe wartości dla parametrów
-    std::vector<double> mu_spread_parameters = {1.0, 2.0, 3.0};  // Zamień na właściwe wartości
-    std::vector<double> sigma_spread_parameters = {1.5, 2.5, 3.5};  // Zamień na właściwe wartości
-    
-    double ring = 2.0;
-    double exposure = 5.0;
 
-    // Oblicz mean_spread i var_spread
-    double mean_spread = mean_spread_function(ring, exposure, mu_spread_parameters);
-    double var_spread = var_spread_function(ring, exposure, mu_spread_parameters, sigma_spread_parameters);
-
-    // Wypisz wyniki
-    std::cout << "Mean Spread: " << mean_spread << std::endl;
-    std::cout << "Variance Spread: " << var_spread << std::endl;
-
-    return 0;
-}
+     conditional_mean[j]<-mean_spread_function(ring=j,exposure=ring_exposure_numbers[j]-1)
+            conditional_var[j]<-var_spread_function(ring=j,exposure=ring_exposure_numbers[j]-1)
+            alpha[j]<-conditional_mean[j]*(ring_exposure_numbers[j]-1-conditional_mean[j]-conditional_var[j]/conditional_mean[j])/(conditional_mean[j]+(ring_exposure_numbers[j]-1)*(conditional_var[j]/conditional_mean[j]-1))
+            beta[j]<-(ring_exposure_numbers[j]-1-conditional_mean[j])*(ring_exposure_numbers[j]-1-conditional_mean[j]-conditional_var[j]/conditional_mean[j])/(conditional_mean[j]+(ring_exposure_numbers[j]-1)*(conditional_var[j]/conditional_mean[j]-1))
+            simulated_probability[j]<-rbeta(n=1,shape1=alpha[j],shape2=beta[j])
+            
+            number_of_fire_spreads[j]<-1+rbinom(n=1,size=ring_exposure_numbers[j]-1,prob=simulated_probability[j])
