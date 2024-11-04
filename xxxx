@@ -1,12 +1,40 @@
-mean_spread_function<-function(ring,exposure){
-  
-  mean_spread_function<-exposure/(1+exp(-mu_spread_parameters[1])*ring^(-mu_spread_parameters[2])*exposure^(-mu_spread_parameters[3]))
-  
+#include <cmath>   // Do funkcji exp() i pow()
+#include <vector>  // Do przechowywania parametrów
+#include <iostream>  // Do wypisywania wyników
+
+// Funkcja licząca mean_spread_function
+double mean_spread_function(double ring, double exposure, const std::vector<double>& mu_spread_parameters) {
+    return exposure / (1 + std::exp(-mu_spread_parameters[0]) * 
+                              std::pow(ring, -mu_spread_parameters[1]) * 
+                              std::pow(exposure, -mu_spread_parameters[2]));
 }
 
-# - number of fire spreads var
-var_spread_function<-function(ring,exposure){
-  
-  var_spread_function<-mean_spread_function(ring,exposure)*(1-mean_spread_function(ring,exposure)/exposure)*(1+(exposure-1)/(1+exp(-sigma_spread_parameters[1])*ring^(-sigma_spread_parameters[2])*exposure^(-sigma_spread_parameters[3])))
-  
+// Funkcja licząca var_spread_function
+double var_spread_function(double ring, double exposure, const std::vector<double>& mu_spread_parameters, const std::vector<double>& sigma_spread_parameters) {
+    double mean_spread = mean_spread_function(ring, exposure, mu_spread_parameters);
+    
+    return mean_spread * (1 - mean_spread / exposure) * 
+           (1 + (exposure - 1) / 
+           (1 + std::exp(-sigma_spread_parameters[0]) * 
+                std::pow(ring, -sigma_spread_parameters[1]) * 
+                std::pow(exposure, -sigma_spread_parameters[2])));
+}
+
+int main() {
+    // Przykładowe wartości dla parametrów
+    std::vector<double> mu_spread_parameters = {1.0, 2.0, 3.0};  // Zamień na właściwe wartości
+    std::vector<double> sigma_spread_parameters = {1.5, 2.5, 3.5};  // Zamień na właściwe wartości
+    
+    double ring = 2.0;
+    double exposure = 5.0;
+
+    // Oblicz mean_spread i var_spread
+    double mean_spread = mean_spread_function(ring, exposure, mu_spread_parameters);
+    double var_spread = var_spread_function(ring, exposure, mu_spread_parameters, sigma_spread_parameters);
+
+    // Wypisz wyniki
+    std::cout << "Mean Spread: " << mean_spread << std::endl;
+    std::cout << "Variance Spread: " << var_spread << std::endl;
+
+    return 0;
 }
