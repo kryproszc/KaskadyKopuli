@@ -1,1 +1,4 @@
-plik_lista <- list.files(path = sciezka_do_folderu, pattern = "formularz.*\\.00[0-9]$", full.names = TRUE)
+> unzip(output_file, exdir = sciezka_do_wypakowania)
+Warning message:
+In unzip(output_file, exdir = sciezka_do_wypakowania) :
+  error 1 in extracting from zip file
