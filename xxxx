@@ -1,25 +1,12 @@
-oblicz_kwantyle <- function(df) {
-  # Używamy funkcji lapply, aby obliczyć kwantyle dla każdej kolumny
-  kwantyle_dla_kolumn <- lapply(names(df), function(nazwa_kolumny) {
-    kolumna <- df[[nazwa_kolumny]]
-    if (is.numeric(kolumna)) {
-      quantile(kolumna, probs = c(0, 0.25, 0.5, 0.75, 1))
-    } else {
-      NA  # Zwróć NA, jeśli kolumna nie jest numeryczna
-    }
-  })
-
-  # Nadajemy nazwę kolumnom na podstawie oryginalnych nazw kolumn w df
-  names(kwantyle_dla_kolumn) <- names(df)
-
-  # Konwertujemy wynik do formatu data frame dla czytelności
-  kwantyle_dla_kolumn_df <- as.data.frame(kwantyle_dla_kolumn)
-
-  # Zwracamy wynik
-  return(kwantyle_dla_kolumn_df)
+mean_spread_function<-function(ring,exposure){
+  
+  mean_spread_function<-exposure/(1+exp(-mu_spread_parameters[1])*ring^(-mu_spread_parameters[2])*exposure^(-mu_spread_parameters[3]))
+  
 }
 
-# Przykład użycia
-# Załóżmy, że Twój dataframe nazywa się "df"
-kwantyle_dla_kolumn_df <- oblicz_kwantyle(df)
-print(kwantyle_dla_kolumn_df)
+# - number of fire spreads var
+var_spread_function<-function(ring,exposure){
+  
+  var_spread_function<-mean_spread_function(ring,exposure)*(1-mean_spread_function(ring,exposure)/exposure)*(1+(exposure-1)/(1+exp(-sigma_spread_parameters[1])*ring^(-sigma_spread_parameters[2])*exposure^(-sigma_spread_parameters[3])))
+  
+}
