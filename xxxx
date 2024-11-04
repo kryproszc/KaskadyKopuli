@@ -1,74 +1,20 @@
-#include <chrono>
-#include <iostream>
-#include <algorithm>
-#include <vector>
-#include <string>
-#include <iterator>
-#include <random>
-#include <numeric>
-#include <sstream>
-#include <chrono>
-#include <iostream>
-#include <algorithm>
-#include <optional>
-#include <vector>
-#include <string>
-#include <iterator>
-#include <random>
-#include <numeric>
-#include <chrono>
-#include <atomic>
-#include <mutex>
-#include <iostream>
-#include <algorithm>
-#include <vector>
-#include <string>
-#include <iterator>
-#include <random>
-#include <numeric>
-#include <sstream>
-#include <deque>
-#include <condition_variable>
-#include <thread>
-#include <functional>
-#include <future>
-#include <sstream>
-#include <iostream>
-#include <string>
-#include <map>
-#include <chrono>
-#include <vector>
-#include "csvstream.hpp"
-#include "BS_thread_pool.hpp"
-#include <boost/random/beta_distribution.hpp>
+double exposure_number = ring_exposure_numbers[j] - 1;
 
-#include <iostream>
-#include <future>
-#include <thread>
-#include <stdio.h>
-#include <thread>
-#include <random>
-#include <future>
-#include <filesystem>
-#include <chrono>
-#include <future>
-#include <iostream>
-#include <chrono>
-#include <thread>
+    // Wywołanie mean_spread_function z parametrami mu_spread_parameters
+    conditional_mean[j] = mean_spread_function(j, exposure_number, mu_spread_parameters);
 
-#include <filesystem>
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl2.h"
-#include <iostream>
-#include <future>
-#include <thread>
-#include <stdio.h>
-#include <filesystem>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
-#include <ctime>
-#include <iomanip>
-#include <direct.h>
+    // Wywołanie var_spread_function z parametrami mu_spread_parameters i sigma_spread_parameters
+    conditional_var[j] = var_spread_function(j, exposure_number, mu_spread_parameters, sigma_spread_parameters);
+
+    // Kalkulacja alpha i beta
+    alpha[j] = conditional_mean[j] * (exposure_number - conditional_mean[j] - conditional_var[j] / conditional_mean[j]) /
+               (conditional_mean[j] + exposure_number * (conditional_var[j] / conditional_mean[j] - 1));
+
+    beta[j] = (exposure_number - conditional_mean[j]) * (exposure_number - conditional_mean[j] - conditional_var[j] / conditional_mean[j]) /
+              (conditional_mean[j] + exposure_number * (conditional_var[j] / conditional_mean[j] - 1));
+
+    // Losowanie z rozkładu beta
+    simulated_probability[j] = randBeta(alpha[j], beta[j]);
+
+    // Losowanie liczby rozprzestrzenionych ognisk za pomocą rozkładu Bernoulli
+    number_of_fire_spreads[j] = 1 + randBin(static_cast<int>(exposure_number), simulated_probability[j]);
