@@ -1,3 +1,10 @@
+
+double randBeta(double alpha, double beta) {
+    static boost::random::mt19937 gen(static_cast<unsigned int>(std::chrono::system_clock::now().time_since_epoch().count()));
+    boost::random::beta_distribution<> beta_dist(alpha, beta);
+    return beta_dist(gen);
+}
+
 double exposure_number = ring_exposure_numbers[j] - 1;
 
     // Wywołanie mean_spread_function z parametrami mu_spread_parameters
