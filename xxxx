@@ -1,29 +1,24 @@
-void zapiszDoCSV(std::string fileNames, const string& sciezka, int index, const vector<vector<double>>& output_brutto_final,
-    const vector<vector<double>>& output_brutto_kat_final,
-    const vector<vector<double>>& output_netto_final,
-    const vector<vector<double>>& output_netto_kat_final)
+int calc_odnowienia(int polic_end_year,
+    std::vector<std::vector<double>> odnowienia_vec_data,
+    int odnowienia_exponsure,
+    double sum_ub)
 {
-    std::cout << "Komunikat start" << std::endl;
+    int ind_pom = 0;
+    int policy_end_year_cop;
+    long double prob_unif = randZeroToOne(0, 1);
 
-    std::cout << sciezka + "/" + generujNazwePliku(fileNames) << std::endl;
-    std::cout << "Komunikat stop" << std::endl;
-
-    ofstream plik(sciezka + "/" + generujNazwePliku(fileNames));
-    // if (!plik) {
-    //   cerr << "Nie można otworzyć pliku do zapisu." << endl;
-    //  return;
-    //}
-    std::cout << "dlugosc  output_brutto_final" << std::endl;
-
-    std::cout << output_brutto_final[index].size() << std::endl;
-    plik << "Brutto,Brutto_Katastroficzny,Netto,Netto_Katastroficzny" << endl;
-    for (size_t i = 0; i < output_brutto_final[index].size(); ++i)
+    long double find_prob_odn = find_prob_odnowienie(odnowienia_vec_data,
+        odnowienia_exponsure,
+        sum_ub);
+    //prob_unif <= find_prob_odn
+    if (prob_unif <= 1)
     {
-        plik << fixed << setprecision(2) << output_brutto_final[index][i] << ","
-            << output_brutto_kat_final[index][i] << ","
-            << output_netto_final[index][i] << ","
-            << output_netto_kat_final[index][i] << endl;
+        ind_pom += 1;
+        policy_end_year_cop = polic_end_year + 1;
     }
-
-    plik.close();
+    else
+    {
+        policy_end_year_cop = polic_end_year;
+    }
+    return (policy_end_year_cop);
 }
