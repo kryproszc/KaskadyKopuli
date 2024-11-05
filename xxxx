@@ -1,38 +1,36 @@
-# Funkcja do liczenia wierszy w plikach CSV w folderach Pierwotny i Rozprzestrzeniony
-oblicz_ilosc_wierszy <- function(sciezka_folderu) {
-  # Wczytaj nazwy plików (np. 0.csv, 1.csv, itd.)
-  pliki <- list.files(sciezka_folderu, pattern = "*.csv", full.names = TRUE)
+# Funkcja do obliczania średniej kolumny "Brutto" w plikach CSV z folderu Symulacje
+oblicz_srednia_brutto <- function(sciezka_do_symulacji) {
+  # Wczytaj listę plików CSV w folderze Symulacje
+  pliki <- list.files(sciezka_do_symulacji, pattern = "*.csv", full.names = TRUE)
   
-  # Policz ilość wierszy w każdym pliku
-  ilosci_wierszy <- sapply(pliki, function(plik) nrow(read.csv(plik)))
+  # Tworzymy pustą listę, aby przechowywać wyniki
+  wyniki <- lapply(pliki, function(plik) {
+    # Odczytaj plik CSV
+    dane <- read.csv(plik)
+    
+    # Sprawdź, czy kolumna Brutto istnieje
+    if ("Brutto" %in% colnames(dane)) {
+      # Oblicz średnią z kolumny Brutto
+      srednia_brutto <- mean(dane$Brutto, na.rm = TRUE)
+    } else {
+      # Jeśli brak kolumny Brutto, ustaw NA
+      srednia_brutto <- NA
+    }
+    
+    # Zwróć nazwę pliku i średnią jako lista
+    list(Ubezpieczyciel = basename(plik), srednia_brutto = srednia_brutto)
+  })
   
-  return(ilosci_wierszy)
-}
-
-# Główna funkcja
-stworz_dataframe <- function(sciezka_do_folderu) {
-  # Ścieżki do folderów Pierwotny i Rozprzestrzeniony
-  sciezka_pierwotny <- file.path(sciezka_do_folderu, "Pierwotny")
-  sciezka_rozprzestrzeniony <- file.path(sciezka_do_folderu, "Rozprzestrzeniony")
-  
-  # Oblicz ilości wierszy w plikach z folderu Pierwotny i Rozprzestrzeniony
-  ilosci_pierwotny <- oblicz_ilosc_wierszy(sciezka_pierwotny)
-  ilosci_rozprzestrzeniony <- oblicz_ilosc_wierszy(sciezka_rozprzestrzeniony)
-  
-  # Utwórz `data.frame`
-  df <- data.frame(
-    Pierwotny = ilosci_pierwotny,
-    Rozprzestrzeniony = ilosci_rozprzestrzeniony,
-    Suma = ilosci_pierwotny + ilosci_rozprzestrzeniony
-  )
+  # Przekształć wyniki z listy na data.frame
+  df <- do.call(rbind, lapply(wyniki, as.data.frame))
   
   return(df)
 }
 
 # Użycie funkcji:
-# Zakładam, że sciezka_do_folderu to ścieżka do folderu, który zawiera foldery Pierwotny, Rozprzestrzeniony i Symulacje
-sciezka_do_folderu <- "sciezka/do/twojego/folderu"
-wynik <- stworz_dataframe(sciezka_do_folderu)
+# Zakładam, że sciezka_do_symulacji to ścieżka do folderu Symulacje
+sciezka_do_symulacji <- "sciezka/do/twojego/folderu/Symulacje"
+wynik_srednie_brutto <- oblicz_srednia_brutto(sciezka_do_symulacji)
 
 # Zobacz wynikowy dataframe
-print(wynik)
+print(wynik_srednie_brutto)
