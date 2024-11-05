@@ -1,28 +1,38 @@
-    for (int i = 0; i < ilosc_ubezpieczycieli; i++)
-    {
-        double sum_brutto_final = 0.0;
-        if (!out_brutto[i].empty())
-        {
-            double sum_brutto = accumulate(out_brutto[i].begin(), out_brutto[i].end(), 0.0);
-            sum_brutto_final = sum_brutto;
-            if (i == insurancer)
-            {
-                sum_brutto_final += wielkosc_pozar_kwota;
-            }
+# Funkcja do liczenia wierszy w plikach CSV w folderach Pierwotny i Rozprzestrzeniony
+oblicz_ilosc_wierszy <- function(sciezka_folderu) {
+  # Wczytaj nazwy plików (np. 0.csv, 1.csv, itd.)
+  pliki <- list.files(sciezka_folderu, pattern = "*.csv", full.names = TRUE)
+  
+  # Policz ilość wierszy w każdym pliku
+  ilosci_wierszy <- sapply(pliki, function(plik) nrow(read.csv(plik)))
+  
+  return(ilosci_wierszy)
+}
 
-            out_sum_brutto[i].push_back(sum_brutto);
-            //std::cerr << sum_brutto<< "\n";
+# Główna funkcja
+stworz_dataframe <- function(sciezka_do_folderu) {
+  # Ścieżki do folderów Pierwotny i Rozprzestrzeniony
+  sciezka_pierwotny <- file.path(sciezka_do_folderu, "Pierwotny")
+  sciezka_rozprzestrzeniony <- file.path(sciezka_do_folderu, "Rozprzestrzeniony")
+  
+  # Oblicz ilości wierszy w plikach z folderu Pierwotny i Rozprzestrzeniony
+  ilosci_pierwotny <- oblicz_ilosc_wierszy(sciezka_pierwotny)
+  ilosci_rozprzestrzeniony <- oblicz_ilosc_wierszy(sciezka_rozprzestrzeniony)
+  
+  # Utwórz `data.frame`
+  df <- data.frame(
+    Pierwotny = ilosci_pierwotny,
+    Rozprzestrzeniony = ilosci_rozprzestrzeniony,
+    Suma = ilosci_pierwotny + ilosci_rozprzestrzeniony
+  )
+  
+  return(df)
+}
 
-            if (sum_brutto_final > kat_val)
-            {
-                out_kat_brutto[i] = out_brutto[i];
-                ind_kat_brutto[i] = ind_brutto[i];
-                out_reas_kat[i] = out_reas_standard[i];
-                out_sum_kat_brutto[i].push_back(sum_brutto);
-            }
-         //   else {
-         //       out_kat_brutto[i] = { 0 };
-         //   }
-        }
+# Użycie funkcji:
+# Zakładam, że sciezka_do_folderu to ścieżka do folderu, który zawiera foldery Pierwotny, Rozprzestrzeniony i Symulacje
+sciezka_do_folderu <- "sciezka/do/twojego/folderu"
+wynik <- stworz_dataframe(sciezka_do_folderu)
 
-    }
+# Zobacz wynikowy dataframe
+print(wynik)
