@@ -1,36 +1,29 @@
-# Funkcja do obliczania średniej kolumny "Brutto" w plikach CSV z folderu Symulacje
-oblicz_srednia_brutto <- function(sciezka_do_symulacji) {
-  # Wczytaj listę plików CSV w folderze Symulacje
-  pliki <- list.files(sciezka_do_symulacji, pattern = "*.csv", full.names = TRUE)
-  
-  # Tworzymy pustą listę, aby przechowywać wyniki
-  wyniki <- lapply(pliki, function(plik) {
-    # Odczytaj plik CSV
-    dane <- read.csv(plik)
-    
-    # Sprawdź, czy kolumna Brutto istnieje
-    if ("Brutto" %in% colnames(dane)) {
-      # Oblicz średnią z kolumny Brutto
-      srednia_brutto <- mean(dane$Brutto, na.rm = TRUE)
-    } else {
-      # Jeśli brak kolumny Brutto, ustaw NA
-      srednia_brutto <- NA
+void zapiszDoCSV(std::string fileNames, const string& sciezka, int index, const vector<vector<double>>& output_brutto_final,
+    const vector<vector<double>>& output_brutto_kat_final,
+    const vector<vector<double>>& output_netto_final,
+    const vector<vector<double>>& output_netto_kat_final)
+{
+    std::cout << "Komunikat start" << std::endl;
+
+    std::cout << sciezka + "/" + generujNazwePliku(fileNames) << std::endl;
+    std::cout << "Komunikat stop" << std::endl;
+
+    ofstream plik(sciezka + "/" + generujNazwePliku(fileNames));
+    // if (!plik) {
+    //   cerr << "Nie można otworzyć pliku do zapisu." << endl;
+    //  return;
+    //}
+    std::cout << "dlugosc  output_brutto_final" << std::endl;
+
+    std::cout << output_brutto_final[index].size() << std::endl;
+    plik << "Brutto,Brutto_Katastroficzny,Netto,Netto_Katastroficzny" << endl;
+    for (size_t i = 0; i < output_brutto_final[index].size(); ++i)
+    {
+        plik << fixed << setprecision(2) << output_brutto_final[index][i] << ","
+            << output_brutto_kat_final[index][i] << ","
+            << output_netto_final[index][i] << ","
+            << output_netto_kat_final[index][i] << endl;
     }
-    
-    # Zwróć nazwę pliku i średnią jako lista
-    list(Ubezpieczyciel = basename(plik), srednia_brutto = srednia_brutto)
-  })
-  
-  # Przekształć wyniki z listy na data.frame
-  df <- do.call(rbind, lapply(wyniki, as.data.frame))
-  
-  return(df)
+
+    plik.close();
 }
-
-# Użycie funkcji:
-# Zakładam, że sciezka_do_symulacji to ścieżka do folderu Symulacje
-sciezka_do_symulacji <- "sciezka/do/twojego/folderu/Symulacje"
-wynik_srednie_brutto <- oblicz_srednia_brutto(sciezka_do_symulacji)
-
-# Zobacz wynikowy dataframe
-print(wynik_srednie_brutto)
