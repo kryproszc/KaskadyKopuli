@@ -7,8 +7,16 @@ sciezka_symulacje_2022 <- "M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie
 # Wczytaj listy plików ubezpieczycieli
 pliki_ubezpieczycieli <- list.files(sciezka_input_2024, pattern = "\\.csv$", full.names = FALSE)
 
-# Inicjalizacja listy wyników
-wyniki_lista <- list()
+# Inicjalizacja pustej ramki danych na wyniki
+wyniki_df <- data.frame(
+  Ubezpieczyciel = character(),
+  SU_2022 = numeric(), SU_2024 = numeric(),
+  Liczba_2022 = numeric(), Liczba_2024 = numeric(),
+  Q_sum_2022 = numeric(), Q_sum_2024 = numeric(),
+  Srednia_sim_2022 = numeric(), Srednia_sim_2024 = numeric(),
+  Q_sim_2022 = numeric(), Q_sim_2024 = numeric(),
+  stringsAsFactors = FALSE
+)
 
 # Iteracja po każdym ubezpieczycielu
 for (plik in pliki_ubezpieczycieli) {
@@ -63,17 +71,16 @@ for (plik in pliki_ubezpieczycieli) {
     Q_sim_2022 <- 0
   }
 
-  # Dodanie wyników dla danego pliku (ubezpieczyciela) do listy jako osobna ramka danych
-  wyniki_lista[[plik]] <- data.frame(
+  # Dodanie wyników jako nowego wiersza do ramki danych
+  wyniki_df <- rbind(wyniki_df, data.frame(
     Ubezpieczyciel = sub(".csv", "", plik),
-    SU_2022 = SU_2022, SU_2024 = SU_2024, Liczba_2022 = Liczba_2022, Liczba_2024 = Liczba_2024,
-    Q_sum_2022 = Q_sum_2022, Q_sum_2024 = Q_sum_2024, Srednia_sim_2022 = Srednia_sim_2022,
-    Srednia_sim_2024 = Srednia_sim_2024, Q_sim_2022 = Q_sim_2022, Q_sim_2024 = Q_sim_2024
-  )
+    SU_2022 = SU_2022, SU_2024 = SU_2024,
+    Liczba_2022 = Liczba_2022, Liczba_2024 = Liczba_2024,
+    Q_sum_2022 = Q_sum_2022, Q_sum_2024 = Q_sum_2024,
+    Srednia_sim_2022 = Srednia_sim_2022, Srednia_sim_2024 = Srednia_sim_2024,
+    Q_sim_2022 = Q_sim_2022, Q_sim_2024 = Q_sim_2024
+  ))
 }
-
-# Tworzenie finalnej ramki danych
-wyniki_df <- do.call(rbind, wyniki_lista)
 
 # Wyświetlenie wyników
 print(wyniki_df)
