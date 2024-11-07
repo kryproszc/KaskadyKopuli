@@ -1,18 +1,22 @@
-suma_ub_2022 <- rnorm(1000, mean = 100, sd = 20)  # przykładowe dane
-suma_ub_2024 <- rnorm(1000, mean = 110, sd = 25)  # przykładowe dane
+scieznka_input_2024 <-"M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Ubezpieczyciele/COMPENSA_TU_SA_VIG.csv"
+obiekty_2024<-read.csv2(scieznka_input_2024)
+symulacje_2024<-read.csv("M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Wyniki 2024-11-07 13.16.09/Symulacje/COMPENSA_TU_SA_VIG.csv")
 
-# Dzielimy wektor suma_ub_2022 na 10 równych przedziałów
-breaks_2022 <- seq(min(suma_ub_2022), max(suma_ub_2022), length.out = 11)
+SU_2024<-obiekty_2024$SumaUbezpieczenia
+wielkosc_straty2024<-symulacje_2024$Brutto
+scieznka_input_2022 <-"M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_all/Ubezpieczyciele/COMPENSA_TU_SA_VIG.csv"
+obiekty_2022<-read.csv2(scieznka_input_2022)
+symulacje_2022<-read.csv("M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_all/Wyniki 2024-11-07 14.42.45/Symulacje/COMPENSA_TU_SA_VIG.csv")
+wielkosc_straty2022<-symulacje_2022$Brutto
 
-# Liczymy ile wartości z suma_ub_2022 należy do każdego przedziału
-counts_2022 <- cut(suma_ub_2022, breaks = breaks_2022, include.lowest = TRUE)
-counts_2022_table <- table(counts_2022)
 
-# Liczymy ile wartości z suma_ub_2024 należy do każdego przedziału
-counts_2024 <- cut(suma_ub_2024, breaks = breaks_2022, include.lowest = TRUE)
-counts_2024_table <- table(counts_2024)
-
-# Wyświetlamy wyniki
-for (i in 1:length(counts_2022_table)) {
-  cat("Przedział", names(counts_2022_table)[i], ": suma_ub_2022 =", counts_2022_table[i], ", suma_ub_2024 =", counts_2024_table[i], "\n")
-}
+SU_2022[1]<-sum(obiekty_2022$SumaUbezpieczenia)
+SU_2024[1]<-sum(obiekty_2024$SumaUbezpieczenia)
+Liczba_2022[1]<-nrow(obiekty_2022)
+Liczba_2024[1]<-nrow(obiekty_2024)
+Q_sum_2022[1]<-quantile(obiekty_2022$SumaUbezpieczenia,0.995)
+Q_sum_2024[1]<-quantile(obiekty_2024$SumaUbezpieczenia,0.995)
+Srednia_sim_2022[1]<-mean(wielkosc_straty2022)
+Srednia_sim_2024[1]<-mean(wielkosc_straty2024)
+Q_sim_2022[1]<-quantile(wielkosc_straty2022,0.995)
+Q_sim_2024[1]<-quantile(wielkosc_straty2024,0.995)
