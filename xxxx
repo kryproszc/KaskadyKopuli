@@ -1,15 +1,20 @@
-df <- data.frame(
-  values = values,
-  quantiles = ecdf(values)(values)  # Funkcja empirycznej dystrybucji kwantyli
-)
+# Zakładamy, że dane 'suma_ub_2022' i 'suma_ub_2024' są dostępne
+suma_ub_2022 <- rnorm(1000, mean = 100, sd = 20)  # przykładowe dane
+suma_ub_2024 <- rnorm(1000, mean = 110, sd = 25)  # przykładowe dane
 
-# Rysowanie wykresu
-ggplot(df, aes(x = quantiles, y = values)) +
-  geom_point(size = 3, color = "blue") +
-  geom_hline(yintercept = y, linetype = "dashed", color = "red") + 
-  labs(
-    title = "Wykres kwantyli z wartością odniesienia y",
-    x = "Kwantyle",
-    y = "Wartości"
-  ) +
-  theme_minimal()
+# Definiujemy kwantyle, które chcemy narysować
+quantiles <- c(0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995, 0.999)
+
+# Obliczamy wartości kwantyli dla obu wektorów
+y_2022 <- quantile(suma_ub_2022, quantiles)
+y_2024 <- quantile(suma_ub_2024, quantiles)
+
+# Tworzymy wykres
+plot(quantiles, y_2022, type = "o", col = "blue", pch = 16, xlab = "Kwantyle", ylab = "Wartości", main = "Wykres kwantyli dla suma_ub_2022 i suma_ub_2024")
+lines(quantiles, y_2024, type = "o", col = "red", pch = 17, lty = 2)
+
+# Dodajemy legendę
+legend("topleft", legend = c("suma_ub_2022", "suma_ub_2024"), col = c("blue", "red"), pch = c(16, 17), lty = c(1, 2))
+
+# Dodajemy siatkę
+grid()
