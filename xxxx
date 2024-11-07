@@ -1,24 +1,15 @@
-int calc_odnowienia(int polic_end_year,
-    std::vector<std::vector<double>> odnowienia_vec_data,
-    int odnowienia_exponsure,
-    double sum_ub)
-{
-    int ind_pom = 0;
-    int policy_end_year_cop;
-    long double prob_unif = randZeroToOne(0, 1);
+df <- data.frame(
+  values = values,
+  quantiles = ecdf(values)(values)  # Funkcja empirycznej dystrybucji kwantyli
+)
 
-    long double find_prob_odn = find_prob_odnowienie(odnowienia_vec_data,
-        odnowienia_exponsure,
-        sum_ub);
-    //prob_unif <= find_prob_odn
-    if (prob_unif <= 1)
-    {
-        ind_pom += 1;
-        policy_end_year_cop = polic_end_year + 1;
-    }
-    else
-    {
-        policy_end_year_cop = polic_end_year;
-    }
-    return (policy_end_year_cop);
-}
+# Rysowanie wykresu
+ggplot(df, aes(x = quantiles, y = values)) +
+  geom_point(size = 3, color = "blue") +
+  geom_hline(yintercept = y, linetype = "dashed", color = "red") + 
+  labs(
+    title = "Wykres kwantyli z wartością odniesienia y",
+    x = "Kwantyle",
+    y = "Wartości"
+  ) +
+  theme_minimal()
