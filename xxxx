@@ -19,7 +19,7 @@ for (plik in pliki_ubezpieczycieli) {
   sciezka_symulacja_2024 <- file.path(sciezka_symulacje_2024, plik)
   sciezka_symulacja_2022 <- file.path(sciezka_symulacje_2022, plik)
   
-  # Wczytanie danych dla 2024, jeśli plik istnieje, w przeciwnym razie przypisanie zer
+  # Wczytanie danych dla 2024
   if (file.exists(sciezka_ubezpieczyciel_2024)) {
     obiekty_2024 <- read.csv2(sciezka_ubezpieczyciel_2024)
     SU_2024 <- sum(obiekty_2024$SumaUbezpieczenia)
@@ -41,7 +41,7 @@ for (plik in pliki_ubezpieczycieli) {
     Q_sim_2024 <- 0
   }
 
-  # Wczytanie danych dla 2022, jeśli plik istnieje, w przeciwnym razie przypisanie zer
+  # Wczytanie danych dla 2022
   if (file.exists(sciezka_ubezpieczyciel_2022)) {
     obiekty_2022 <- read.csv2(sciezka_ubezpieczyciel_2022)
     SU_2022 <- sum(obiekty_2022$SumaUbezpieczenia)
@@ -63,12 +63,12 @@ for (plik in pliki_ubezpieczycieli) {
     Q_sim_2022 <- 0
   }
 
-  # Dodanie wyników do listy
+  # Dodanie wyników dla danego pliku (ubezpieczyciela) do listy jako osobna ramka danych
   wyniki_lista[[plik]] <- data.frame(
     Ubezpieczyciel = sub(".csv", "", plik),
-    SU_2022, SU_2024, Liczba_2022, Liczba_2024,
-    Q_sum_2022, Q_sum_2024, Srednia_sim_2022,
-    Srednia_sim_2024, Q_sim_2022, Q_sim_2024
+    SU_2022 = SU_2022, SU_2024 = SU_2024, Liczba_2022 = Liczba_2022, Liczba_2024 = Liczba_2024,
+    Q_sum_2022 = Q_sum_2022, Q_sum_2024 = Q_sum_2024, Srednia_sim_2022 = Srednia_sim_2022,
+    Srednia_sim_2024 = Srednia_sim_2024, Q_sim_2022 = Q_sim_2022, Q_sim_2024 = Q_sim_2024
   )
 }
 
@@ -77,25 +77,3 @@ wyniki_df <- do.call(rbind, wyniki_lista)
 
 # Wyświetlenie wyników
 print(wyniki_df)
-scieznka_input_2024 <-"M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Ubezpieczyciele/COMPENSA_TU_SA_VIG.csv"
-obiekty_2024<-read.csv2(scieznka_input_2024)
-symulacje_2024<-read.csv("M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Wyniki 2024-11-07 13.16.09/Symulacje/COMPENSA_TU_SA_VIG.csv")
-
-SU_2024<-obiekty_2024$SumaUbezpieczenia
-wielkosc_straty2024<-symulacje_2024$Brutto
-scieznka_input_2022 <-"M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_all/Ubezpieczyciele/COMPENSA_TU_SA_VIG.csv"
-obiekty_2022<-read.csv2(scieznka_input_2022)
-symulacje_2022<-read.csv("M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_all/Wyniki 2024-11-07 14.42.45/Symulacje/COMPENSA_TU_SA_VIG.csv")
-wielkosc_straty2022<-symulacje_2022$Brutto
-
-
-SU_2022[1]<-sum(obiekty_2022$SumaUbezpieczenia)
-SU_2024[1]<-sum(obiekty_2024$SumaUbezpieczenia)
-Liczba_2022[1]<-nrow(obiekty_2022)
-Liczba_2024[1]<-nrow(obiekty_2024)
-Q_sum_2022[1]<-quantile(obiekty_2022$SumaUbezpieczenia,0.995)
-Q_sum_2024[1]<-quantile(obiekty_2024$SumaUbezpieczenia,0.995)
-Srednia_sim_2022[1]<-mean(wielkosc_straty2022)
-Srednia_sim_2024[1]<-mean(wielkosc_straty2024)
-Q_sim_2022[1]<-quantile(wielkosc_straty2022,0.995)
-Q_sim_2024[1]<-quantile(wielkosc_straty2024,0.995)
