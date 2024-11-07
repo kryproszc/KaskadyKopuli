@@ -1,5 +1,1 @@
-hist(suma_ub_2022, col = rgb(0, 0, 1, 0.5), breaks = 20, xlab = "Wartości", main = "Histogramy dla suma_ub_2022 i suma_ub_2024", ylim = c(0, 150), xlim = c(min(c(suma_ub_2022, suma_ub_2024)), max(c(suma_ub_2022, suma_ub_2024))))
-hist(suma_ub_2024, col = rgb(1, 0, 0, 0.5), breaks = 20, add = TRUE)
-
-# Dodajemy legendę do histogramu
-legend("topright", legend = c("suma_ub_2022", "suma_ub_2024"), fill = c(rgb(0, 0, 1, 0.5), rgb(1, 0, 0, 0.5)))
+count_in_range <- sum(suma_ub_2024 >= min(suma_ub_2022) & suma_ub_2024 <= max(suma_ub_2022))
