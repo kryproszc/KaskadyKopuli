@@ -1,1 +1,18 @@
-count_in_range <- sum(suma_ub_2024 >= min(suma_ub_2022) & suma_ub_2024 <= max(suma_ub_2022))
+suma_ub_2022 <- rnorm(1000, mean = 100, sd = 20)  # przykładowe dane
+suma_ub_2024 <- rnorm(1000, mean = 110, sd = 25)  # przykładowe dane
+
+# Dzielimy wektor suma_ub_2022 na 10 równych przedziałów
+breaks_2022 <- seq(min(suma_ub_2022), max(suma_ub_2022), length.out = 11)
+
+# Liczymy ile wartości z suma_ub_2022 należy do każdego przedziału
+counts_2022 <- cut(suma_ub_2022, breaks = breaks_2022, include.lowest = TRUE)
+counts_2022_table <- table(counts_2022)
+
+# Liczymy ile wartości z suma_ub_2024 należy do każdego przedziału
+counts_2024 <- cut(suma_ub_2024, breaks = breaks_2022, include.lowest = TRUE)
+counts_2024_table <- table(counts_2024)
+
+# Wyświetlamy wyniki
+for (i in 1:length(counts_2022_table)) {
+  cat("Przedział", names(counts_2022_table)[i], ": suma_ub_2022 =", counts_2022_table[i], ", suma_ub_2024 =", counts_2024_table[i], "\n")
+}
