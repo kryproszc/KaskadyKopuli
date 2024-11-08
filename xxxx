@@ -1,65 +1,106 @@
-library(openxlsx)
 library(ggplot2)
-
-# Przykładowe dane dla `suma_ubezpieczen` (losowe wartości dla ubezpieczycieli, z zerami)
-suma_ubezpieczen <- list(
-  "14" = c(sample(50:300, 90, replace = TRUE), 0, 0),   # Wektory zawierające niektóre zera
-  "15" = c(sample(30:150, 80, replace = TRUE), 0),
-  "16" = sample(10:200, 120, replace = TRUE)           # Wektor bez zer
-)
-
-# Tworzymy nowy plik Excel z obiektem `workbook`
-wb <- createWorkbook()
-
-# Katalog roboczy dla plików tymczasowych
-katalog_roboczy <- getwd()
-
-# Przechodzimy przez każdego `ubezpieczyciela` w `suma_ubezpieczen`
-for (ubezpieczyciel in names(suma_ubezpieczen)) {
-  # Pobieramy wartości dla bieżącego `ubezpieczyciela` i usuwamy zera
-  wartosci <- suma_ubezpieczen[[ubezpieczyciel]]
-  wartosci_bez_zer <- wartosci[wartosci != 0]  # Usuwamy wartości równe zero
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(openxlsx)
+library(sf)
+# Funkcja do wczytywania danych o szkodach i obiektach oraz generowania map
+wczytaj_i_generuj_mapy <- function(sciezka_glowna) {
   
-  # Tworzymy nowy arkusz z nazwą równą numerowi ubezpieczyciela
-  addWorksheet(wb, sheetName = ubezpieczyciel)
+  # Wczytaj plik CSV ze szkodami
+  dane_szkody <- read.csv2(file.path(sciezka_glowna, "Szkody_final_20_23.csv"),encoding  = "UTF-8",header=TRUE)
+  dim(dane_szkody)
+  # Przechodzimy przez wszystkie foldery ubezpieczycieli
+  lista_folderow <- list.dirs(sciezka_glowna, full.names = TRUE, recursive = FALSE)
   
-  # Obliczamy kwantyle od 0 do 1 co 0.01, tylko dla wartości niezerowych
-  kwantyle <- quantile(wartosci_bez_zer, probs = seq(0, 1, by = 0.01))
+  # Utwórz nowy workbook Excel
+  workbook <- createWorkbook()
   
-  # Konwertujemy kwantyle na ramkę danych, aby móc zapisać ją w arkuszu Excela
-  tabela_kwantyli <- data.frame(Percentyl = seq(0, 1, by = 0.01), Kwantyl = kwantyle)
+  # Pobierz mapę Polski z konturami kraju
+  poland <- ne_countries(scale = "medium", country = "Poland", returnclass = "sf")
+  poland <- st_transform(poland, crs = 4326)
   
-  # Zapisujemy tabelę kwantyli w arkuszu Excela, zaczynając od komórki A1
-  writeData(wb, sheet = ubezpieczyciel, tabela_kwantyli, startRow = 1, startCol = 1)
-  
-  # Tworzymy histogram za pomocą ggplot2
-  p <- ggplot(data.frame(wartosci_bez_zer), aes(x = wartosci_bez_zer)) +
-    geom_histogram(binwidth = 10, color = "black", fill = "blue") +
-    ggtitle(paste("Histogram dla ubezpieczyciela", ubezpieczyciel)) +
-    xlab("Wartości") +
-    ylab("Częstotliwość") +
-    theme_minimal()
-  
-  # Pełna ścieżka pliku PNG dla histogramu
-  filename <- file.path(katalog_roboczy, paste0("histogram_", ubezpieczyciel, ".png"))
-  
-  # Zapisujemy wykres jako plik PNG przy użyciu ggsave
-  ggsave(filename, plot = p, width = 6, height = 4, units = "in", dpi = 300)
-  
-  # Sprawdzamy, czy plik PNG istnieje przed dodaniem do Excela
-  if (file.exists(filename)) {
-    # Wstawiamy plik PNG do arkusza Excela obok tabeli kwantyli (np. w kolumnie D)
-    insertImage(wb, sheet = ubezpieczyciel, filename, width = 6, height = 4, startRow = 1, startCol = 4, units = "in")
+  # Iteracja przez foldery ubezpieczycieli
+  for (folder in lista_folderow) {
     
-    # Usuwamy plik tymczasowy PNG po jego wstawieniu
-    file.remove(filename)
-  } else {
-    message(paste("Nie można znaleźć pliku:", filename))
+    sciezka_csv <- list.files(folder, pattern = "_final\\.csv$", full.names = TRUE)
+    nazwa_ubezpieczyciela <- basename(folder)
+    nazwa_ubezpieczyciela <- sub("^\\d+\\s+", "", nazwa_ubezpieczyciela)  # Usuwa liczby na początku
+    folder_wewnetrzny <- file.path(folder, nazwa_ubezpieczyciela)
+    sciezka_csv<- paste0(folder_wewnetrzny,"/",nazwa_ubezpieczyciela,"_final.csv")
+    print(paste0("przetwarzam plik dla: ",nazwa_ubezpieczyciela))
+    if (length(sciezka_csv) == 1) {
+      # Wczytaj dane o obiektach
+      dane_obiekty <- read.csv2(sciezka_csv,encoding  = "UTF-8")[, c("Szerokosc", "Dlugosc")]
+      tail(dane_obiekty)
+      # Wyciągnij nazwę ubezpieczyciela z nazwy pliku (np. "PZU" z "PZU_final.csv")
+      nazwa_ubezpieczyciela <- sub("_final\\.csv$", "", basename(sciezka_csv))
+      
+      # Filtruj dane_szkody dla danego ubezpieczyciela
+      dane_szkody_filtr <- subset(dane_szkody, ReasekuracjaO == nazwa_ubezpieczyciela)
+      
+      #dane_obiekty <- st_as_sf(dane_obiekty, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
+      dane_szkody <- st_as_sf(dane_szkody, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
+      
+      
+      dane_obiekty <- tryCatch({
+        st_as_sf(dane_obiekty, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
+      }, error = function(e) {
+        message("Błąd podczas konwersji danych obiektów do sf: ", e)
+        return(NULL)
+      })
+      
+      
+      
+      dane_szkody_filtr <- st_as_sf(dane_szkody_filtr, coords = c("Dlugosc", "Szerokosc"), crs = 4326)
+      map_all_damage <- ggplot() +
+        geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
+        geom_sf(data = dane_obiekty, color = "black", size = 0.05) +
+        geom_sf(data = dane_szkody, color = "red", shape = 4, size = 0.05) +  # Krzyżyki dla szkód
+        theme_classic() +
+        theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
+        labs(
+          title = paste("Mapa obiektów ubezpieczonych ubezpieczyciela", nazwa_ubezpieczyciela, "i szkody wszystkich ubezpieczycieli"),
+          x = "Długość geograficzna", y = "Szerokość geograficzna"
+        ) +
+        coord_sf(lims_method = "geometry_bbox")
+      # Zapisz mapę ogólną do pliku tymczasowego
+      temp_file_all <- tempfile(fileext = ".png")
+      ggsave(temp_file_all, plot = map_all_damage, width = 6, height = 5, dpi = 300)
+      # Tworzenie mapy specyficznej (budynki i szkody tylko dla tego ubezpieczyciela)
+      map_specific_damage <- ggplot() +
+        geom_sf(data = poland, fill = "lightyellow", color = "darkblue", size = 0.5) +
+        geom_sf(data = dane_obiekty, color = "black", size = 0.05) +
+        geom_sf(data = dane_szkody_filtr, color = "red", shape = 4, size = 0.05) +  # Krzyżyki dla szkód
+        theme_classic() +
+        theme(plot.title = element_text(hjust = 0.5, margin = margin(b = 10))) +
+        labs(
+          title = paste("Mapa obiektów ubezpieczonych i szkód ubezpieczyciela", nazwa_ubezpieczyciela),
+          x = "Długość geograficzna", y = "Szerokość geograficzna"
+        ) +
+        coord_sf(lims_method = "geometry_bbox")
+      # Zapisz mapę specyficzną do pliku tymczasowego
+      temp_file_specific <- tempfile(fileext = ".png")
+      ggsave(temp_file_specific, plot = map_specific_damage, width = 6, height = 5, dpi = 300)
+      
+      # Dodaj nowy arkusz dla ubezpieczyciela i wstaw obie mapki
+      addWorksheet(workbook, sheetName = nazwa_ubezpieczyciela)
+      
+      # Wstaw mapę specyficzną
+      insertImage(workbook, sheet = nazwa_ubezpieczyciela, file = temp_file_specific, width = 20, height = 10, startRow = 1, startCol = 1)
+      
+      # Wstaw mapę ogólną poniżej
+      insertImage(workbook, sheet = nazwa_ubezpieczyciela, file = temp_file_all, width = 20, height = 10, startRow = 53, startCol = 1)
+    }
   }
+  
+  # Zapisz workbook do pliku Excel
+  saveWorkbook(workbook, paste0(sciezka_glowna,"/Budynki_podsumowanie.xlsx"), overwrite = TRUE)
 }
 
-# Zapisujemy workbook do pliku Excel
-saveWorkbook(wb, "suma_ubezpieczen_kwantyle_histogramy_ggplot2.xlsx", overwrite = TRUE)
+# Wywołanie funkcji z podaną ścieżką do głównego folderu
+#sciezka_glowna <- "C/szczkr/test:/Users"
+sciezka_glowna <- "I:/WOM/Sprawy_bieżące/Model ryzyka pożaru/Model YE2023/2_dane od ZU/5_czynne na 2023.12.31/2_po_geokodowaniu_final"
+wczytaj_i_generuj_mapy(sciezka_glowna)
 
-# Komunikat o zakończeniu
-print("Plik Excel 'suma_ubezpieczen_kwantyle_histogramy_ggplot2.xlsx' został zapisany.")
+
+
