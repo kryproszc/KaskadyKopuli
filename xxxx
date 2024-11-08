@@ -1,5 +1,8 @@
-df$DataPoczatku <- as.Date(df$DataPoczatku, format="%Y-%m-%d")
-df$DataKonca <- as.Date(df$DataKonca, format="%Y-%m-%d")
+library(stringr)
+df <- df[!str_detect(df$DataPoczatku, "^\\d{2}\\.\\d{2}\\.\\d{4}$") & !str_detect(df$DataKonca, "^\\d{2}\\.\\d{2}\\.\\d{4}$"), ]
 
 # Filtracja wierszy, gdzie DataPoczatku i DataKonca nie sa puste (nie NA)
 wynik <- df[!is.na(df$DataPoczatku) & !is.na(df$DataKonca), ]
+
+# Wypisanie wynikow
+print(wynik)
