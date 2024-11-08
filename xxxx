@@ -1,10 +1,11 @@
-library(writexl)
 library(openxlsx)
-library(ggplot2)
 
-# Zakładamy, że mamy listę `suma_ubezpieczen` po poprzednich obliczeniach
-# Dla uproszczenia załóżmy, że lista wygląda mniej więcej tak:
-# suma_ubezpieczen <- list("14" = c(100, 200, 150), "15" = c(50, 120, 90), ...)
+# Przykładowe dane dla `suma_ubezpieczen` (losowe wartości dla ubezpieczycieli)
+suma_ubezpieczen <- list(
+  "14" = sample(50:300, 100, replace = TRUE),
+  "15" = sample(30:150, 80, replace = TRUE),
+  "16" = sample(10:200, 120, replace = TRUE)
+)
 
 # Tworzymy nowy plik Excel z obiektem `workbook`
 wb <- createWorkbook()
@@ -17,33 +18,18 @@ for (ubezpieczyciel in names(suma_ubezpieczen)) {
   # Tworzymy nowy arkusz z nazwą równą numerowi ubezpieczyciela
   addWorksheet(wb, sheetName = ubezpieczyciel)
   
-  # Tworzymy histogram za pomocą ggplot2
-  p <- ggplot(data.frame(wartosci), aes(x = wartosci)) +
-    geom_histogram(binwidth = 10, color = "black", fill = "blue") +
-    ggtitle(paste("Histogram dla ubezpieczyciela", ubezpieczyciel)) +
-    xlab("Wartości") +
-    ylab("Częstotliwość") +
-    theme_minimal()
-  
-  # Zapisujemy wykres jako plik PNG
-  filename <- paste0("histogram_", ubezpieczyciel, ".png")
-  ggsave(filename, plot = p, width = 6, height = 4, units = "in")
-  
-  # Wstawiamy plik PNG do arkusza Excela
-  insertImage(wb, sheet = ubezpieczyciel, filename, width = 6, height = 4, startRow = 1, startCol = 1)
-  
-  # Usuwamy plik tymczasowy PNG
-  file.remove(filename)
-  
   # Obliczamy kwantyle od 0 do 1 co 0.01
   kwantyle <- quantile(wartosci, probs = seq(0, 1, by = 0.01))
   
   # Konwertujemy kwantyle na ramkę danych, aby móc zapisać ją w arkuszu Excela
   tabela_kwantyli <- data.frame(Percentyl = seq(0, 1, by = 0.01), Kwantyl = kwantyle)
   
-  # Zapisujemy tabelę kwantyli poniżej histogramu, np. od wiersza 20
-  writeData(wb, sheet = ubezpieczyciel, tabela_kwantyli, startRow = 20, startCol = 1)
+  # Zapisujemy tabelę kwantyli w arkuszu Excela, zaczynając od komórki A1
+  writeData(wb, sheet = ubezpieczyciel, tabela_kwantyli, startRow = 1, startCol = 1)
 }
 
 # Zapisujemy workbook do pliku Excel
-saveWorkbook(wb, "suma_ubezpieczen.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "suma_ubezpieczen_kwantyle.xlsx", overwrite = TRUE)
+
+# Komunikat o zakończeniu
+print("Plik Excel 'suma_ubezpieczen_kwantyle.xlsx' został zapisany.")
