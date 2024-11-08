@@ -1,1 +1,148 @@
-invalid_rows <- df_input[!grepl(pattern, df_input[["Adres_Kod_pocztowy"]]), ]
+std::vector<std::vector<double>> reasurance_risk(std::vector<std::vector<double>> out_exp_sum_kwota_insurancers,
+    std::vector<std::vector<double>> out_reas_insurens,
+    int ilosc_ubezpieczycieli)
+{
+    double exp_fire_pre;
+    double reas_oblig;
+    double b_f;
+    double reas_fakultat;
+    std::vector<double> vec_fakul_insur_num;
+    std::vector<double> vec_obligat_insur_risk;
+    std::vector<std::vector<double>> vec_fakul_insur_val;
+    std::vector<std::vector<double>> sum_prem_out_res(ilosc_ubezpieczycieli);
+    std::vector<std::vector<double>> ind_prem_out_res(ilosc_ubezpieczycieli);
+    std::vector<double> vec_final_premium;
+    for (int kk = 0; kk < ilosc_ubezpieczycieli; kk++)
+    {
+        std::vector<double> out_reas = out_reas_insurens[kk];
+        std::vector<double> input_one_insurance = out_exp_sum_kwota_insurancers[kk];
+        int len_insurance = input_one_insurance.size();
+        for (int i = 0; i < len_insurance; i++)
+        {
+            exp_fire_pre = input_one_insurance[i];
+            vec_obligat_insur_risk = obligatoryjna_input_risk[kk];
+            reas_fakultat = exp_fire_pre;
+            reas_oblig = exp_fire_pre;
+            if ((out_reas[i] < 100))
+            {
+                vec_fakul_insur_num = fakultatywna_input_num[kk];
+                vec_fakul_insur_val = fakultatywna_input_val[kk];
+
+                if (std::find(vec_fakul_insur_num.begin(), vec_fakul_insur_num.end(), out_reas[i]) != vec_fakul_insur_num.end())
+                {
+                    b_f = vec_fakul_insur_val[out_reas[i]][0];
+
+                    reas_fakultat = exp_fire_pre * b_f + std::max(0.0, (1 - b_f) * exp_fire_pre - vec_fakul_insur_val[out_reas[i]][1]);
+                    reas_oblig = reas_fakultat;
+                }
+                else
+                {
+                    reas_fakultat = std::min(exp_fire_pre, vec_fakul_insur_val[out_reas[i]][0]) + std::max(0.0, exp_fire_pre - vec_fakul_insur_val[out_reas[i]][1]);
+                    reas_oblig = reas_fakultat;
+                }
+            }
+            if (floor(vec_obligat_insur_risk[0]) >= 0)
+            {
+                reas_oblig = calc_res_bligator(vec_obligat_insur_risk, reas_fakultat);
+            }
+            sum_prem_out_res[kk].push_back(reas_oblig);
+            ind_prem_out_res[kk].push_back(i);
+        }
+    }
+    return (sum_prem_out_res);
+}
+
+std::vector<std::vector<double>> calc_reas_obliga_event(int ins_ind,
+    double fire_prem,
+    std::vector<std::vector<double>> num_reas_insurances,
+    std::vector<std::vector<double>> val_reas_insurances,
+    int size_vec, int ilosc_ubezpieczycieli)
+{
+    std::vector<std::vector<double>> vec_reas_final(3);
+    std::vector<double> reas_spread(size_vec);
+    std::vector<double> val_reas_insurance;
+    std::vector<double> num_reas_insurance;
+    std::vector<double> vec_obligat;
+    std::vector<double> val_sums_insur;
+
+    double reas_oblig;
+    double sum_of_elems;
+    double sum_of_elems_fire_el;
+    for (int i = 0; i < ilosc_ubezpieczycieli; i++)
+    {
+        double sum_value = 0;
+        val_reas_insurance = val_reas_insurances[i];
+        num_reas_insurance = num_reas_insurances[i];
+        vec_obligat = obligatoryjna_input_event[i];
+        sum_of_elems = std::accumulate(val_reas_insurance.begin(), val_reas_insurance.end(), 0);
+        int size_vec_reas;
+        size_vec_reas = num_reas_insurance.size();
+        if ((size_vec_reas == 0) && (ins_ind == i))
+        {
+            vec_reas_final[0].push_back(fire_prem);
+        }
+        else if ((size_vec_reas >= 1) && (ins_ind == i))
+        {
+            sum_of_elems_fire_el = sum_of_elems + fire_prem;
+            reas_oblig = calc_reas_bligator(vec_obligat, sum_of_elems_fire_el);
+            if (sum_of_elems_fire_el != reas_oblig)
+            {
+                for (auto it = std::begin(num_reas_insurance); it != std::end(num_reas_insurance); ++it)
+                {
+                    reas_spread[*it] = sum_of_elems_fire_el / (size_vec_reas + 1);
+                    sum_value += sum_of_elems_fire_el / (size_vec_reas + 1);
+                }
+                vec_reas_final[0].push_back(sum_of_elems_fire_el / (size_vec_reas + 1));
+            }
+            else
+            {
+                int kk = 0;
+                for (auto it = std::begin(num_reas_insurance); it != std::end(num_reas_insurance); ++it)
+                {
+                    reas_spread[*it] = val_reas_insurance[kk];
+                    sum_value += val_reas_insurance[kk];
+                    kk = kk + 1;
+                }
+                vec_reas_final[0].push_back(fire_prem);
+            }
+        }
+        else if ((size_vec_reas > 1) && (ins_ind != 1))
+        {
+            reas_oblig = calc_reas_bligator(vec_obligat, sum_of_elems);
+            if (sum_of_elems != reas_oblig)
+            {
+                int kk = 0;
+                for (auto it = std::begin(num_reas_insurance); it != std::end(num_reas_insurance); ++it)
+                {
+                    reas_spread[*it] = sum_of_elems / size_vec_reas;
+                    kk = kk + 1;
+                }
+                vec_reas_final[0].push_back(sum_of_elems / size_vec_reas);
+            }
+            else
+            {
+                int kk = 0;
+                for (auto it = std::begin(num_reas_insurance); it != std::end(num_reas_insurance); ++it)
+                {
+                    reas_spread[*it] = val_reas_insurance[kk];
+                    sum_value += val_reas_insurance[kk];
+                    kk = kk + 1;
+                }
+            }
+        }
+        else
+        {
+            int kk = 0;
+            for (auto it = std::begin(num_reas_insurance); it != std::end(num_reas_insurance); ++it)
+            {
+                reas_spread[*it] = val_reas_insurance[kk];
+                kk = kk + 1;
+            }
+        }
+        val_sums_insur.push_back(sum_value);
+    }
+    vec_reas_final[1] = reas_spread;
+    vec_reas_final[2] = val_sums_insur;
+
+    return (vec_reas_final);
+}
