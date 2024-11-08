@@ -16,6 +16,11 @@ for (i in seq_len(nrow(pozar_pierwotny))) {
   biezacy_index <- pozar_pierwotny$IndexTable[i]
   biezaca_wielkosc_pozaru <- pozar_pierwotny$FireSize[i]
   
+  # Jeśli bieżący ubezpieczyciel nie istnieje jeszcze w suma_ubezpieczen, inicjalizujemy go jako pusty wektor
+  if (is.null(suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]])) {
+    suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]] <- c()
+  }
+  
   # Znajdź wiersze w pozar_rozprzestrzeniony, które mają ten sam IndexTable
   dopasowane_wiersze <- pozar_rozprzestrzeniony %>%
     filter(IndexTable == biezacy_index)
@@ -23,17 +28,22 @@ for (i in seq_len(nrow(pozar_pierwotny))) {
   # Jeśli `Insurer` i `insurance` są takie same, sumujemy `FireSize` i `WielkoscKwota`
   if (any(dopasowane_wiersze$insurance == biezacy_ubezpieczyciel)) {
     suma_calosciowa <- biezaca_wielkosc_pozaru + sum(dopasowane_wiersze$WielkoscKwota[dopasowane_wiersze$insurance == biezacy_ubezpieczyciel])
-    suma_ubezpieczen[[biezacy_ubezpieczyciel]] <- c(suma_ubezpieczen[[biezacy_ubezpieczyciel]], suma_calosciowa)
+    suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]] <- c(suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]], suma_calosciowa)
   } else {
     # Dodajemy `FireSize` dla bieżącego Insurer
-    suma_ubezpieczen[[biezacy_ubezpieczyciel]] <- c(suma_ubezpieczen[[biezacy_ubezpieczyciel]], biezaca_wielkosc_pozaru)
+    suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]] <- c(suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]], biezaca_wielkosc_pozaru)
   }
   
   # Dodajemy każdą `WielkoscKwota` osobno do odpowiadającego `insurance` w pozar_rozprzestrzeniony
   for (ubezpieczenie in unique(dopasowane_wiersze$insurance)) {
+    # Sprawdź, czy ubezpieczenie istnieje w suma_ubezpieczen, jeśli nie, zainicjalizuj je
+    if (is.null(suma_ubezpieczen[[as.character(ubezpieczenie)]])) {
+      suma_ubezpieczen[[as.character(ubezpieczenie)]] <- c()
+    }
+    
     if (ubezpieczenie != biezacy_ubezpieczyciel) {
       suma_dla_ubezpieczenia <- sum(dopasowane_wiersze$WielkoscKwota[dopasowane_wiersze$insurance == ubezpieczenie])
-      suma_ubezpieczen[[ubezpieczenie]] <- c(suma_ubezpieczen[[ubezpieczenie]], suma_dla_ubezpieczenia)
+      suma_ubezpieczen[[as.character(ubezpieczenie)]] <- c(suma_ubezpieczen[[as.character(ubezpieczenie)]], suma_dla_ubezpieczenia)
     }
   }
 }
