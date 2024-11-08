@@ -1,35 +1,65 @@
 library(openxlsx)
+library(ggplot2)
 
-# Przykładowe dane dla `suma_ubezpieczen` (losowe wartości dla ubezpieczycieli)
+# Przykładowe dane dla `suma_ubezpieczen` (losowe wartości dla ubezpieczycieli, z zerami)
 suma_ubezpieczen <- list(
-  "14" = sample(50:300, 100, replace = TRUE),
-  "15" = sample(30:150, 80, replace = TRUE),
-  "16" = sample(10:200, 120, replace = TRUE)
+  "14" = c(sample(50:300, 90, replace = TRUE), 0, 0),   # Wektory zawierające niektóre zera
+  "15" = c(sample(30:150, 80, replace = TRUE), 0),
+  "16" = sample(10:200, 120, replace = TRUE)           # Wektor bez zer
 )
 
 # Tworzymy nowy plik Excel z obiektem `workbook`
 wb <- createWorkbook()
 
+# Katalog roboczy dla plików tymczasowych
+katalog_roboczy <- getwd()
+
 # Przechodzimy przez każdego `ubezpieczyciela` w `suma_ubezpieczen`
 for (ubezpieczyciel in names(suma_ubezpieczen)) {
-  # Pobieramy wartości dla bieżącego `ubezpieczyciela`
+  # Pobieramy wartości dla bieżącego `ubezpieczyciela` i usuwamy zera
   wartosci <- suma_ubezpieczen[[ubezpieczyciel]]
+  wartosci_bez_zer <- wartosci[wartosci != 0]  # Usuwamy wartości równe zero
   
   # Tworzymy nowy arkusz z nazwą równą numerowi ubezpieczyciela
   addWorksheet(wb, sheetName = ubezpieczyciel)
   
-  # Obliczamy kwantyle od 0 do 1 co 0.01
-  kwantyle <- quantile(wartosci, probs = seq(0, 1, by = 0.01))
+  # Obliczamy kwantyle od 0 do 1 co 0.01, tylko dla wartości niezerowych
+  kwantyle <- quantile(wartosci_bez_zer, probs = seq(0, 1, by = 0.01))
   
   # Konwertujemy kwantyle na ramkę danych, aby móc zapisać ją w arkuszu Excela
   tabela_kwantyli <- data.frame(Percentyl = seq(0, 1, by = 0.01), Kwantyl = kwantyle)
   
   # Zapisujemy tabelę kwantyli w arkuszu Excela, zaczynając od komórki A1
   writeData(wb, sheet = ubezpieczyciel, tabela_kwantyli, startRow = 1, startCol = 1)
+  
+  # Tworzymy histogram za pomocą ggplot2
+  p <- ggplot(data.frame(wartosci_bez_zer), aes(x = wartosci_bez_zer)) +
+    geom_histogram(binwidth = 10, color = "black", fill = "blue") +
+    ggtitle(paste("Histogram dla ubezpieczyciela", ubezpieczyciel)) +
+    xlab("Wartości") +
+    ylab("Częstotliwość") +
+    theme_minimal()
+  
+  # Pełna ścieżka pliku PNG dla histogramu
+  filename <- file.path(katalog_roboczy, paste0("histogram_", ubezpieczyciel, ".png"))
+  
+  # Zapisujemy wykres jako plik PNG przy użyciu ggsave
+  ggsave(filename, plot = p, width = 6, height = 4, units = "in", dpi = 300)
+  
+  # Sprawdzamy, czy plik PNG istnieje przed dodaniem do Excela
+  if (file.exists(filename)) {
+    # Wstawiamy plik PNG do arkusza Excela obok tabeli kwantyli (np. w kolumnie D)
+    insertImage(wb, sheet = ubezpieczyciel, filename, width = 6, height = 4, startRow = 1, startCol = 4, units = "in")
+    
+    # Usuwamy plik tymczasowy PNG po jego wstawieniu
+    file.remove(filename)
+  } else {
+    message(paste("Nie można znaleźć pliku:", filename))
+  }
 }
 
 # Zapisujemy workbook do pliku Excel
-saveWorkbook(wb, "suma_ubezpieczen_kwantyle.xlsx", overwrite = TRUE)
+saveWorkbook(wb, "suma_ubezpieczen_kwantyle_histogramy_ggplot2.xlsx", overwrite = TRUE)
 
 # Komunikat o zakończeniu
-print("Plik Excel 'suma_ubezpieczen_kwantyle.xlsx' został zapisany.")
+print("Plik Excel 'suma_ubezpieczen_kwantyle_histogramy_ggplot2.xlsx' został zapisany.")
