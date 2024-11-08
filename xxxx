@@ -1,52 +1,49 @@
-# Ścieżki do plików
-sciezka_pozar_pierwotny <- "M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Wyniki 2024-11-07 13.16.09/Pierwotny/0.csv"
-sciezka_pozar_rozprzestrzeniony <- "M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Wyniki 2024-11-07 13.16.09/Rozprzestrzeniony/0.csv"
+library(writexl)
+library(openxlsx)
+library(ggplot2)
 
-# Wczytywanie danych
-pozar_pierwotny <- read.csv(sciezka_pozar_pierwotny)
-pozar_rozprzestrzeniony <- read.csv(sciezka_pozar_rozprzestrzeniony)
+# Zakładamy, że mamy listę `suma_ubezpieczen` po poprzednich obliczeniach
+# Dla uproszczenia załóżmy, że lista wygląda mniej więcej tak:
+# suma_ubezpieczen <- list("14" = c(100, 200, 150), "15" = c(50, 120, 90), ...)
 
-# Inicjalizujemy pustą listę dla sumowania ubezpieczeń
-suma_ubezpieczen <- list()
+# Tworzymy nowy plik Excel z obiektem `workbook`
+wb <- createWorkbook()
 
-# Iteracja po każdym Insurer w pozar_pierwotny
-for (i in seq_len(nrow(pozar_pierwotny))) {
-  # Pobieramy dane dla bieżącego Insurer
-  biezacy_ubezpieczyciel <- pozar_pierwotny$Insurer[i]
-  biezacy_index <- pozar_pierwotny$IndexTable[i]
-  biezaca_wielkosc_pozaru <- pozar_pierwotny$FireSize[i]
+# Przechodzimy przez każdego `ubezpieczyciela` w `suma_ubezpieczen`
+for (ubezpieczyciel in names(suma_ubezpieczen)) {
+  # Pobieramy wartości dla bieżącego `ubezpieczyciela`
+  wartosci <- suma_ubezpieczen[[ubezpieczyciel]]
   
-  # Jeśli bieżący ubezpieczyciel nie istnieje jeszcze w suma_ubezpieczen, inicjalizujemy go jako pusty wektor
-  if (is.null(suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]])) {
-    suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]] <- c()
-  }
+  # Tworzymy nowy arkusz z nazwą równą numerowi ubezpieczyciela
+  addWorksheet(wb, sheetName = ubezpieczyciel)
   
-  # Znajdź wiersze w pozar_rozprzestrzeniony, które mają ten sam IndexTable
-  dopasowane_wiersze <- pozar_rozprzestrzeniony %>%
-    filter(IndexTable == biezacy_index)
+  # Tworzymy histogram za pomocą ggplot2
+  p <- ggplot(data.frame(wartosci), aes(x = wartosci)) +
+    geom_histogram(binwidth = 10, color = "black", fill = "blue") +
+    ggtitle(paste("Histogram dla ubezpieczyciela", ubezpieczyciel)) +
+    xlab("Wartości") +
+    ylab("Częstotliwość") +
+    theme_minimal()
   
-  # Jeśli `Insurer` i `insurance` są takie same, sumujemy `FireSize` i `WielkoscKwota`
-  if (any(dopasowane_wiersze$insurance == biezacy_ubezpieczyciel)) {
-    suma_calosciowa <- biezaca_wielkosc_pozaru + sum(dopasowane_wiersze$WielkoscKwota[dopasowane_wiersze$insurance == biezacy_ubezpieczyciel])
-    suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]] <- c(suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]], suma_calosciowa)
-  } else {
-    # Dodajemy `FireSize` dla bieżącego Insurer
-    suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]] <- c(suma_ubezpieczen[[as.character(biezacy_ubezpieczyciel)]], biezaca_wielkosc_pozaru)
-  }
+  # Zapisujemy wykres jako plik PNG
+  filename <- paste0("histogram_", ubezpieczyciel, ".png")
+  ggsave(filename, plot = p, width = 6, height = 4, units = "in")
   
-  # Dodajemy każdą `WielkoscKwota` osobno do odpowiadającego `insurance` w pozar_rozprzestrzeniony
-  for (ubezpieczenie in unique(dopasowane_wiersze$insurance)) {
-    # Sprawdź, czy ubezpieczenie istnieje w suma_ubezpieczen, jeśli nie, zainicjalizuj je
-    if (is.null(suma_ubezpieczen[[as.character(ubezpieczenie)]])) {
-      suma_ubezpieczen[[as.character(ubezpieczenie)]] <- c()
-    }
-    
-    if (ubezpieczenie != biezacy_ubezpieczyciel) {
-      suma_dla_ubezpieczenia <- sum(dopasowane_wiersze$WielkoscKwota[dopasowane_wiersze$insurance == ubezpieczenie])
-      suma_ubezpieczen[[as.character(ubezpieczenie)]] <- c(suma_ubezpieczen[[as.character(ubezpieczenie)]], suma_dla_ubezpieczenia)
-    }
-  }
+  # Wstawiamy plik PNG do arkusza Excela
+  insertImage(wb, sheet = ubezpieczyciel, filename, width = 6, height = 4, startRow = 1, startCol = 1)
+  
+  # Usuwamy plik tymczasowy PNG
+  file.remove(filename)
+  
+  # Obliczamy kwantyle od 0 do 1 co 0.01
+  kwantyle <- quantile(wartosci, probs = seq(0, 1, by = 0.01))
+  
+  # Konwertujemy kwantyle na ramkę danych, aby móc zapisać ją w arkuszu Excela
+  tabela_kwantyli <- data.frame(Percentyl = seq(0, 1, by = 0.01), Kwantyl = kwantyle)
+  
+  # Zapisujemy tabelę kwantyli poniżej histogramu, np. od wiersza 20
+  writeData(wb, sheet = ubezpieczyciel, tabela_kwantyli, startRow = 20, startCol = 1)
 }
 
-# Wyświetl wynik
-print(suma_ubezpieczen)
+# Zapisujemy workbook do pliku Excel
+saveWorkbook(wb, "suma_ubezpieczen.xlsx", overwrite = TRUE)
