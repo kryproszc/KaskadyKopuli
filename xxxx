@@ -1,4 +1,1 @@
-pattern <- "^\\d{2}-\\d{3}$"
-
-# Sprawdzenie i zliczenie, ile wierszy spełnia warunek wzorca
-count_valid <- sum(grepl(pattern, df_input[["Adres_Kod_pocztowy"]]))
+invalid_rows <- df_input[!grepl(pattern, df_input[["Adres_Kod_pocztowy"]]), ]
