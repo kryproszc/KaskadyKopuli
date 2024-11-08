@@ -1,1 +1,42 @@
-M:\Program ostateczny\tetsty_czytanie\tetsty_czytanie\csv\Input_2024\Wyniki 2024-11-07 13.16.09
+# Ścieżki do plików
+sciezka_pozar_pierwotny <- "M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Wyniki 2024-11-07 13.16.09/Pierwotny/0.csv"
+sciezka_pozar_rozprzestrzeniony <- "M:/Program ostateczny/tetsty_czytanie/tetsty_czytanie/csv/Input_2024/Wyniki 2024-11-07 13.16.09/Rozprzestrzeniony/0.csv"
+
+# Wczytywanie danych
+pozar_pierwotny <- read.csv(sciezka_pozar_pierwotny)
+pozar_rozprzestrzeniony <- read.csv(sciezka_pozar_rozprzestrzeniony)
+
+# Inicjalizujemy pustą listę dla sumowania ubezpieczeń
+suma_ubezpieczen <- list()
+
+# Iteracja po każdym Insurer w pozar_pierwotny
+for (i in seq_len(nrow(pozar_pierwotny))) {
+  # Pobieramy dane dla bieżącego Insurer
+  biezacy_ubezpieczyciel <- pozar_pierwotny$Insurer[i]
+  biezacy_index <- pozar_pierwotny$IndexTable[i]
+  biezaca_wielkosc_pozaru <- pozar_pierwotny$FireSize[i]
+  
+  # Znajdź wiersze w pozar_rozprzestrzeniony, które mają ten sam IndexTable
+  dopasowane_wiersze <- pozar_rozprzestrzeniony %>%
+    filter(IndexTable == biezacy_index)
+  
+  # Jeśli `Insurer` i `insurance` są takie same, sumujemy `FireSize` i `WielkoscKwota`
+  if (any(dopasowane_wiersze$insurance == biezacy_ubezpieczyciel)) {
+    suma_calosciowa <- biezaca_wielkosc_pozaru + sum(dopasowane_wiersze$WielkoscKwota[dopasowane_wiersze$insurance == biezacy_ubezpieczyciel])
+    suma_ubezpieczen[[biezacy_ubezpieczyciel]] <- c(suma_ubezpieczen[[biezacy_ubezpieczyciel]], suma_calosciowa)
+  } else {
+    # Dodajemy `FireSize` dla bieżącego Insurer
+    suma_ubezpieczen[[biezacy_ubezpieczyciel]] <- c(suma_ubezpieczen[[biezacy_ubezpieczyciel]], biezaca_wielkosc_pozaru)
+  }
+  
+  # Dodajemy każdą `WielkoscKwota` osobno do odpowiadającego `insurance` w pozar_rozprzestrzeniony
+  for (ubezpieczenie in unique(dopasowane_wiersze$insurance)) {
+    if (ubezpieczenie != biezacy_ubezpieczyciel) {
+      suma_dla_ubezpieczenia <- sum(dopasowane_wiersze$WielkoscKwota[dopasowane_wiersze$insurance == ubezpieczenie])
+      suma_ubezpieczen[[ubezpieczenie]] <- c(suma_ubezpieczen[[ubezpieczenie]], suma_dla_ubezpieczenia)
+    }
+  }
+}
+
+# Wyświetl wynik
+print(suma_ubezpieczen)
