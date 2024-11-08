@@ -1,4 +1,4 @@
-pattern <- "\\d{2}-\\d{3}"
-df_input[["Adres_Kod_pocztowy"]] <- ifelse(grepl(pattern, df_input[["Adres_Kod_pocztowy"]]),
-                                           gsub(paste0(".*?(", pattern, ").*"), "\\1", df_input[["Adres_Kod_pocztowy"]]),
-                                           "")
+pattern <- "^\\d{2}-\\d{3}$"
+
+# Sprawdzenie i zliczenie, ile wierszy spełnia warunek wzorca
+count_valid <- sum(grepl(pattern, df_input[["Adres_Kod_pocztowy"]]))
