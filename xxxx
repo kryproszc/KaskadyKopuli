@@ -1,2 +1,4 @@
-filtered_df <- df[grep(";", df$Adres_Ulica_i_numer), ]
-
+pattern <- "\\d{2}-\\d{3}"
+df_input[["Adres_Kod_pocztowy"]] <- ifelse(grepl(pattern, df_input[["Adres_Kod_pocztowy"]]),
+                                           gsub(paste0(".*?(", pattern, ").*"), "\\1", df_input[["Adres_Kod_pocztowy"]]),
+                                           "")
