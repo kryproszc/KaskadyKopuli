@@ -1,44 +1,81 @@
-# Wczytanie potrzebnych pakietów
-library(openxlsx)
 library(ggplot2)
+library(openxlsx)
 
-# Ustalanie katalogów zapisu
-# Katalog tymczasowy na plik PNG
-save_dir <- tempdir()
+suma_ubezpieczeń <- list(
+  "14" = c(sample(50:300, 90, replace = TRUE), 0, 0),
+  "15" = c(sample(30:150, 80, replace = TRUE), 0),
+  "16" = sample(10:200, 120, replace = TRUE)
+)
 
-# Katalog docelowy dla pliku Excel (zmień na odpowiednią ścieżkę, np. "Documents")
-excel_dir <- "C:/Users/TwojaNazwaUzytkownika/Documents"
+skoroszyt <- createWorkbook()
 
-# Przykładowe dane do wykresu
-percentyle <- c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.97, 0.99, 0.995)
-wartosci_bez_zer <- sample(10:200, 100, replace = TRUE)
-kwantyle <- quantile(wartosci_bez_zer, probs = percentyle)
-tabela_kwantyli <- data.frame(Percentyl = percentyle, Kwantyl = kwantyle)
-
-# Tworzenie wykresu
-p <- ggplot(tabela_kwantyli, aes(x = Percentyl, y = Kwantyl)) +
-  geom_line(color = "darkblue", size = 1.2) +
-  geom_point(color = "red", size = 3) +
-  ggtitle("Wykres kwantyli") +
-  xlab("Percentyl") +
-  ylab("Kwantyl") +
-  theme_minimal(base_size = 14)
-
-# Zapisujemy jako plik PNG w `save_dir`
-png_file <- file.path(save_dir, "kwantyle_16.png")
-ggsave(png_file, plot = p, width = 8, height = 6, dpi = 300)
-message("Plik PNG zapisany jako: ", png_file)
-
-# Tworzenie i zapis pliku Excel
-if (file.exists(png_file)) {
-  wb <- createWorkbook()
-  addWorksheet(wb, "Wykres")
-  insertImage(wb, sheet = "Wykres", file = png_file, width = 6, height = 4, startRow = 1, startCol = 1, units = "in")
+for (name in names(suma_ubezpieczeń)) {
+  dane <- data.frame(y = suma_ubezpieczeń[[name]][suma_ubezpieczeń[[name]] != 0])
   
-  # Zapisujemy workbook do pliku Excel w `excel_dir`
-  excel_file <- file.path(excel_dir, "wykresy_kwantyli.xlsx")
-  saveWorkbook(wb, excel_file, overwrite = TRUE)
-  print(paste("Plik Excel zapisany jako:", excel_file))
-} else {
-  stop("Plik obrazu nie został znaleziony.")
+  kwantyle_prawdopodobieństwa <- seq(0, 0.9, 0.1)
+  dane_wykres_kwantyli <- data.frame(
+    Kwantyl = kwantyle_prawdopodobieństwa,
+    Wartość = quantile(dane$y, probs = kwantyle_prawdopodobieństwa)
+  )
+  
+  wykres <- ggplot(dane_wykres_kwantyli, aes(x = Kwantyl, y = Wartość)) +
+    geom_line(color = "blue", size = 1.2) +
+    geom_point(color = "red", size = 3) +
+    labs(title = paste("Wykres kwantyli dla", name), x = "Kwantyl", y = "Wartość") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  kwantyle_prawdopodobieństwa_2 <- seq(0.9, 1, 0.05)
+  dane_wykres_kwantyli_2 <- data.frame(
+    Kwantyl = kwantyle_prawdopodobieństwa_2,
+    Wartość = quantile(dane$y, probs = kwantyle_prawdopodobieństwa_2)
+  )
+  
+  wykres_2 <- ggplot(dane_wykres_kwantyli_2, aes(x = Kwantyl, y = Wartość)) +
+    geom_line(color = "green", size = 1.2) +
+    geom_point(color = "orange", size = 3) +
+    labs(title = paste("Wykres kwantyli (od 0.9 do 1) dla", name), x = "Kwantyl", y = "Wartość") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  dane_histogram <- data.frame(values = dane$y)
+  wykres_histogram <- ggplot(dane_histogram, aes(x = values)) +
+    geom_histogram(binwidth = 10, fill = "skyblue", color = "black") +
+    labs(title = paste("Histogram przykładowych danych dla", name), x = "Wartości", y = "Częstotliwość")
+  
+  nazwa_pliku <- paste0("wykres_", name, ".png")
+  ggsave(filename = nazwa_pliku, plot = wykres, width = 6, height = 4)
+  
+  nazwa_pliku_2 <- paste0("wykres_2_", name, ".png")
+  ggsave(filename = nazwa_pliku_2, plot = wykres_2, width = 6, height = 4)
+  
+  nazwa_pliku_histogram <- paste0("histogram_", name, ".png")
+  ggsave(filename = nazwa_pliku_histogram, plot = wykres_histogram, width = 6, height = 4)
+  
+  kwantyle <- quantile(dane$y, probs = seq(0, 1, 0.01))
+  kwantyle_df <- data.frame(
+    Kwantyl = paste0(seq(0, 100, 1), "%"),
+    Wartość = as.numeric(kwantyle)
+  )
+  
+  dodatkowe_kwantyle <- quantile(dane$y, probs = seq(0.99, 1, 0.001))
+  dodatkowe_kwantyle_df <- data.frame(
+    Kwantyl = paste0(seq(99, 100, 0.1), "%"),
+    Wartość = as.numeric(dodatkowe_kwantyle)
+  )
+  
+  pełne_kwantyle_df <- rbind(kwantyle_df, dodatkowe_kwantyle_df)
+  
+  addWorksheet(skoroszyt, name)
+  
+  writeData(skoroszyt, sheet = name, x = pełne_kwantyle_df, startRow = 3, startCol = 1)
+  
+  insertImage(skoroszyt, sheet = name, file = nazwa_pliku, startRow = 6, startCol = 6, width = 6, height = 4)
+  
+  insertImage(skoroszyt, sheet = name, file = nazwa_pliku_2, startRow = 26, startCol = 6, width = 6, height = 4)
+  
+  insertImage(skoroszyt, sheet = name, file = nazwa_pliku_histogram, startRow = 46, startCol = 6, width = 6, height = 4)
 }
+
+plik_docelowy <- "1wykres.xlsx"
+saveWorkbook(skoroszyt, file = plik_docelowy, overwrite = TRUE)
+
+cat("Wykres, histogram i kwantyle zostały zapisane do pliku Excel: ", plik_docelowy, "\n")
