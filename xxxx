@@ -1,8 +1,1 @@
-library(stringr)
-df <- df[!str_detect(df$DataPoczatku, "^\\d{2}\\.\\d{2}\\.\\d{4}$") & !str_detect(df$DataKonca, "^\\d{2}\\.\\d{2}\\.\\d{4}$"), ]
-
-# Filtracja wierszy, gdzie DataPoczatku i DataKonca nie sa puste (nie NA)
-wynik <- df[!is.na(df$DataPoczatku) & !is.na(df$DataKonca), ]
-
-# Wypisanie wynikow
-print(wynik)
+filtered_df <- df[grep(";", df$Adres_Ulica_i_numer), ]
