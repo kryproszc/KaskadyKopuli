@@ -1,4 +1,873 @@
-> unzip(output_file, exdir = sciezka_do_wypakowania)
-Warning message:
-In unzip(output_file, exdir = sciezka_do_wypakowania) :
-  error 1 in extracting from zip file
+# Ładowanie pakietów
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(DT)
+library(shinycssloaders)
+library(shinyjs)
+library(officer)
+library(rmarkdown)
+library(leaflet)
+library(geosphere)
+library(sf)
+library(lwgeom)
+
+
+
+# Ładowanie pakietów
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(DT)
+library(shinycssloaders)
+library(shinyjs)
+library(officer)
+library(rmarkdown)
+library(leaflet)
+library(geosphere)
+library(sf)
+library(lwgeom)
+
+# Wczytywanie plików shapefile
+#setwd("C:/Users/szczkr/Desktop/KOd_zmiana/ShinyProject")
+setwd("M:/KOd_zmiana/ShinyProject")
+gminy <- st_read("gminy/gminy.shp")
+powiaty <- st_read("powiaty/powiaty.shp")
+wojewodztwa <- st_read("wojewodztwa/wojewodztwa.shp")
+
+# Naprawianie geometrii
+gminy <- st_make_valid(gminy)
+powiaty <- st_make_valid(powiaty)
+wojewodztwa <- st_make_valid(wojewodztwa)
+
+# Upraszczanie geometrii
+gminy <- st_simplify(gminy, dTolerance = 100)
+powiaty <- st_simplify(powiaty, dTolerance = 100)
+wojewodztwa <- st_simplify(wojewodztwa, dTolerance = 100)
+
+# Transformacja CRS do WGS84
+gminy <- st_transform(gminy, crs = 4326)
+powiaty <- st_transform(powiaty, crs = 4326)
+wojewodztwa <- st_transform(wojewodztwa, crs = 4326)
+#wojewodztwa <- c(
+##  "Dolnośląskie", "Kujawsko-Pomorskie", "Lubelskie", "Lubuskie", "Łódzkie", 
+#  "Małopolskie", "Mazowieckie", "Opolskie", "Podkarpackie", "Podlaskie", 
+#  "Pomorskie", "Śląskie", "Świętokrzyskie", "Warmińsko-Mazurskie", "Wielkopolskie", 
+# "Zachodniopomorskie", "Brak województwa"
+#)
+
+miesiace <- c(
+  "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", 
+  "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
+)
+zamien_na_nazwy_wybuch <- function(df) {
+  df$Region <- wojewodztwa[df$Region-1]  
+  df$Month <- miesiace[df$Month-1]  
+  return(df)
+}
+zamien_na_nazwy <- function(df) {
+  df$Region <- wojewodztwa[df$Region]  
+  df$Month <- miesiace[df$Month]  
+  return(df)
+}
+load_csv_file <- function(file_path) {
+  if (file.exists(file_path)) {
+    tryCatch({
+      df <- read.csv(file_path, sep = ",",dec = ".")
+      
+      return(df)
+    }, error = function(e) {
+      message(paste("Błąd podczas wczytywania pliku:", file_path, " - ", e))
+      return(NULL)
+    })
+  } else {
+    message("Plik nie został znaleziony w podanej ścieżce.")
+    return(NULL)
+  }
+}
+
+# Funkcja do wczytywania wszystkich plików CSV z danego folderu
+load_csv_files <- function(folder_path) {
+  csv_files <- list.files(folder_path, pattern = "*.csv", full.names = TRUE)
+  data_list <- lapply(csv_files, function(file) {
+    tryCatch({
+      read.csv(file, fileEncoding = "UTF-8-BOM")
+    }, error = function(e) {
+      message(paste("Błąd podczas wczytywania pliku:", file, " - ", e))
+      NULL
+    })
+  })
+  names(data_list) <- gsub(".csv", "", basename(csv_files))
+  return(data_list)
+}
+
+# Funkcja do obliczania statystyk
+calculate_statistics <- function(data) {
+  quantiles <- c(0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+  stats <- data.frame(
+    Statystyki = c("min", "max", quantiles, "mean", "0.995-mean")
+  )
+  
+  for (col in names(data)) {
+    col_quantiles <- quantile(data[[col]], quantiles)
+    col_stats <- c(min(data[[col]]), max(data[[col]]), col_quantiles, mean(data[[col]]), quantile(data[[col]], 0.995) - mean(data[[col]]))
+    stats[[col]] <- col_stats
+  }
+  
+  stats$Statystyki <- as.character(stats$Statystyki)
+  stats$Statystyki[stats$Statystyki %in% quantiles] <- paste0("Q:", sprintf("%.1f%%", as.numeric(stats$Statystyki[stats$Statystyki %in% quantiles]) * 100))
+  
+  return(stats)
+}
+
+generate_pdf_report <- function(data_list, base_path) {
+  timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
+  save_path <- paste0(base_path, "_", timestamp, ".pdf")
+  
+  rmarkdown::render("templete.Rmd", output_file = save_path, params = list(data_list = data_list))
+}
+
+generate_report <- function(data_list, base_path = "RaportRyzykoPozaru") {
+  timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
+  save_path <- paste0(base_path, "_", timestamp, ".docx")
+  
+  summary_data <- data.frame(
+    Ubezpieczyciel = names(data_list),
+    Brutto = numeric(length(data_list)),
+    Brutto_Katastroficzne = numeric(length(data_list)),
+    Netto = numeric(length(data_list)),
+    Netto_Katastroficzne = numeric(length(data_list))
+  )
+  
+  doc <- read_docx()
+  
+  liczba_ubezpieczycieli <- length(data_list)
+  doc <- doc %>%
+    body_add_par("RAPORT RYZYKO POŻARU", style = "heading 1") %>%
+    body_add_par(Sys.Date(), style = "Normal") %>%
+    body_add_par(paste0("Poniższy raport przedstawia analizę przeprowadzoną dla ", 
+                        liczba_ubezpieczycieli, 
+                        " ubezpieczycieli dla roku 2022. W rozdziale 2 zostały przedstawione wyniki SCR dla poszczególnych ubezpieczycieli. W kolejnych rozdziałach prezentowane są szczegółowe wyniki."), 
+                 style = "Normal") %>%
+    body_add_par("", style = "Normal")
+  
+  doc <- doc %>%
+    body_add_par("Spis Treści", style = "heading 1") %>%
+    body_add_toc(level = 2) %>%
+    body_add_par("", style = "Normal")
+  
+  for (insurance_name in names(data_list)) {
+    data <- data_list[[insurance_name]]
+    stats <- calculate_statistics(data)
+    
+    if ("0.995-mean" %in% stats$Statystyki) {
+      brutto_value <- as.numeric(stats[stats$Statystyki == "0.995-mean", "Brutto"])
+      brutto_kat_value <- as.numeric(stats[stats$Statystyki == "0.995-mean", "Brutto_Katastroficzny"])
+      netto_value <- as.numeric(stats[stats$Statystyki == "0.995-mean", "Netto"])
+      netto_kat_value <- as.numeric(stats[stats$Statystyki == "0.995-mean", "Netto_Katastroficzny"])
+      
+      summary_data[summary_data$Ubezpieczyciel == insurance_name, "Brutto"] <- brutto_value
+      summary_data[summary_data$Ubezpieczyciel == insurance_name, "Brutto_Katastroficzne"] <- brutto_kat_value
+      summary_data[summary_data$Ubezpieczyciel == insurance_name, "Netto"] <- netto_value
+      summary_data[summary_data$Ubezpieczyciel == insurance_name, "Netto_Katastroficzne"] <- netto_kat_value
+    }
+  }
+  
+  doc <- doc %>%
+    body_add_par("Podsumowanie", style = "heading 1") %>%
+    body_add_table(value = summary_data, style = "table_template") %>%
+    body_add_par("", style = "Normal")
+  
+  for (insurance_name in names(data_list)) {
+    data <- data_list[[insurance_name]]
+    stats <- calculate_statistics(data)
+    
+    doc <- doc %>%
+      body_add_par(insurance_name, style = "heading 1") %>%
+      body_add_par("Statystyki", style = "heading 2") %>%
+      body_add_table(value = stats, style = "table_template") %>%
+      body_add_par("Histogramy", style = "heading 2")
+    
+    for (col in names(data)) {
+      hist_file <- tempfile(fileext = ".png")
+      png(hist_file, width = 800, height = 600)
+      hist(data[[col]], main = paste("Histogram", col), xlab = col, col = "blue", border = "black")
+      dev.off()
+      doc <- doc %>%
+        body_add_par(col, style = "heading 3") %>%
+        body_add_img(src = hist_file, width = 6, height = 4)
+    }
+    
+    quantiles <- c(0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+    quantile_data <- data.frame(
+      Quantile = rep(quantiles, times = ncol(data)),
+      Value = unlist(lapply(data, quantile, quantiles)),
+      Variable = rep(names(data), each = length(quantiles))
+    )
+    
+    quantile_plot_file <- tempfile(fileext = ".png")
+    png(quantile_plot_file, width = 800, height = 600)
+    print(ggplot(quantile_data, aes(x = Quantile, y = Value, color = Variable)) +
+            geom_line() +
+            geom_point() +
+            labs(title = "Kwantyle dla każdej kolumny", x = "Kwantyl", y = "Wartość szkody") +
+            theme(legend.position = "left"))
+    dev.off()
+    
+    doc <- doc %>%
+      body_add_par("Kwantyle", style = "heading 2") %>%
+      body_add_img(src = quantile_plot_file, width = 6, height = 4)
+  }
+  
+  print(doc, target = save_path)
+}
+# UI
+ui <- fluidPage(
+  useShinyjs(),
+  titlePanel("Analiza pożarów"),
+  navbarPage("Menu",
+             tabPanel("Pobieranie danych",
+                      sidebarLayout(
+                        sidebarPanel(
+                          textInput("folderPath", "Podaj ścieżkę do folderu Output:", ""),
+                          textInput("indexFilePath", "Podaj ścieżkę do folderu z plikiem indeksów:", ""),
+                          actionButton("loadData", "Wczytaj dane")
+                         
+                        ),
+                        mainPanel(
+                          tableOutput("insurerData"),
+                          verbatimTextOutput("percentileOutput"),
+                          verbatimTextOutput("minValueOutput"),
+                          tableOutput("primaryFireTable"),
+                          tableOutput("spreadFireTable"),
+                          tableOutput("indexedPrimaryFireTable")
+                        )
+                      )),
+             tabPanel("Symulacje",
+                      sidebarLayout(
+                        sidebarPanel(
+                          actionButton("update_simulation_inputs", "Aktualizuj dane"),
+                          selectInput("insurance", "Wybierz ubezpieczyciela:", choices = NULL),
+                          selectInput("column", "Wybierz kolumnę:", choices = NULL),
+                          uiOutput("simulationColumnSelector"),
+                          textInput("save_path", "Ścieżka do zapisu raportu:", ""),
+                          selectInput("report_format", "Wybierz format raportu:", choices = c("Word", "PDF")),
+                          actionButton("generate_report", "Generuj raport")
+                        ),
+                        mainPanel(
+                          tabsetPanel(
+                            id = "tabs",
+                            tabPanel("Histogram",
+                                     h2("Histogram"),
+                                     withSpinner(plotOutput("histogramPlot"))
+                            ),
+                            tabPanel("Statystyki",
+                                     h2("Statystyki"),
+                                     withSpinner(DTOutput("statsTable"))
+                            ),
+                            tabPanel("Kwantyle",
+                                     h2("Kwantyle"),
+                                     withSpinner(plotOutput("quantilePlot"))
+                            )
+                          )
+                        )
+                      )),
+             tabPanel("Wizualizacja budynków",
+                      fluidPage(
+                        fluidRow(
+                          column(3,
+                                 selectInput("insurer", "Wybierz ubezpieczyciela:", choices = NULL),
+                                 uiOutput("columnSelector"),
+                                 numericInput("percentileInput", "Podaj percentyl (np. 99.5):", value = NULL),
+                                 actionButton("findPercentile", "Znajdź percentyl"),
+                                 selectizeInput("insurers", "Wybierz ubezpieczycieli do wyświetlenia:", 
+                                                choices = NULL, multiple = TRUE),
+                                 selectInput("highlight", "Wybierz ubezpieczyciela do wyróżnienia:", 
+                                             choices = NULL, selected = 0),
+                                 selectInput("regions", "Wybierz województwa do wyświetlenia:", 
+                                             choices = NULL, multiple = TRUE),
+                                 selectInput("months", "Wybierz miesiące do wyświetlenia:", 
+                                             choices = 0:11, multiple = TRUE),
+                                 numericInput("sumValueMin", "Minimalna suma ubezpieczenia:", value = NA, min = 0, step = 1000),
+                                 numericInput("sumValueMax", "Maksymalna suma ubezpieczenia:", value = NA, min = 0, step = 1000),
+                                 selectInput("mapTiles", "Wybierz typ mapy:", 
+                                             choices = c("OpenStreetMap Mapnik" = "OpenStreetMap.Mapnik",
+                                                         "Esri WorldStreetMap" = "Esri.WorldStreetMap",
+                                                         "Esri.WorldImagery" = "Esri.WorldImagery",
+                                                         "OpenTopoMap" = "OpenTopoMap"))
+                          ),
+                          column(9,
+                                 leafletOutput("map", height = "800px"),
+                                 verbatimTextOutput("percentileOutputVis")
+                          )
+                        )
+                      )
+             ),
+             tabPanel("Analiza budynków",
+                      fluidPage(
+                        useShinyjs(),
+                        inlineCSS(list(
+                          ".overlay" = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000;",
+                          ".spinner" = "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1001;"
+                        )),
+                        titlePanel("Analiza Pożarów w Jednostkach Administracyjnych"),
+                        sidebarLayout(
+                          sidebarPanel(
+                            selectInput("division", "Wybierz poziom podziału:",
+                                        choices = list("Gminy" = "gminy", "Powiaty" = "powiaty", "Województwa" = "wojewodztwa"),
+                                        selected = "wojewodztwa"),
+                            selectInput("variable", "Wybierz zmienną do analizy:",
+                                        choices = list("Liczba Pożarów" = "LiczbaPozarow",
+                                                       "Suma Strat" = "SumValue",
+                                                       "Średnia Strata" = "MeanValue")),
+                            sliderInput("top_n", "Liczba jednostek do wyświetlenia:", 
+                                        min = 1, max = 20, value = 10),
+                            selectizeInput("monthsAnalysis", "Wybierz miesiące:", 
+                                           choices = c("Wszyscy" = "all", 1:12), 
+                                           selected = "all", multiple = TRUE),
+                            selectizeInput("insurersAnalysis", "Wybierz ubezpieczycieli:", 
+                                           choices = c("Wszyscy" = "all"), 
+                                           selected = "all", multiple = TRUE),
+                            radioButtons("top_type", "Wybierz typ jednostek:",
+                                         choices = list("Największe" = "largest", "Najmniejsze" = "smallest"))
+                          ),
+                          mainPanel(
+                            withSpinner(plotOutput("barPlot")),
+                            withSpinner(leafletOutput("mapPlot")),
+                            withSpinner(plotOutput("monthPlot"))
+                          )
+                        ),
+                        div(id = "loadingOverlay", class = "overlay", style = "display: none;"),
+                        div(id = "loadingSpinner", class = "spinner", style = "display: none;", tags$img(src = "https://cdnjs.cloudflare.com/ajax/libs/timelinejs/2.36.0/css/loading.gif", height = "100"))
+                      )
+             )
+  )
+)
+
+# Serwer
+server <- function(input, output, session) {
+  data_reactive <- reactiveVal(list())
+  primary_fire_data <- reactiveVal(NULL)
+  spread_fire_data <- reactiveVal(NULL)
+  combined_data <- reactiveVal(NULL)
+  indexed_primary_fire_data <- reactiveVal(NULL)
+  percentile_data <- reactiveVal(NULL)
+  index_data <- reactiveVal(NULL)
+  
+  observeEvent(input$loadData, {
+    if (input$folderPath != "" && input$indexFilePath != "") {
+      simulations_path <- file.path(input$folderPath, "Symulacje")
+      loaded_data <- load_csv_files(simulations_path)
+      data_reactive(loaded_data)
+      updateSelectInput(session, "insurer", choices = names(loaded_data))
+      updateSelectInput(session, "insurance", choices = names(loaded_data))
+      updateSelectInput(session, "insurerVis", choices = names(loaded_data))
+      updateSelectizeInput(session, "insurers", choices = names(loaded_data), server = TRUE)
+      updateSelectInput(session, "highlight", choices = names(loaded_data))
+      
+      # Wczytanie pliku indeksów
+      index_file_path <- paste0(input$indexFilePath, "/Index.csv")
+      index_df <- load_csv_file(index_file_path)
+      if (!is.null(index_df)) {
+        index_data(index_df)
+      } else {
+        showNotification("Plik indeksów nie został znaleziony.", type = "error")
+      }
+    }
+  })
+  
+  output$columnSelector <- renderUI({
+    req(input$insurer)
+    selectInput("column", "Wybierz kolumnę:", choices = names(data_reactive()[[input$insurer]]))
+  })
+  
+  output$columnSelector <- renderUI({
+    req(input$insurer)
+    selectInput("column", "Wybierz kolumnę:", choices = names(data_reactive()[[input$insurer]]))
+  })
+  
+  output$columnSelectorVis <- renderUI({
+    req(input$insurerVis)
+    selectInput("columnVis", "Wybierz kolumnę:", choices = names(data_reactive()[[input$insurerVis]]))
+  })
+  
+  output$insurerData <- renderTable({
+    req(input$insurer)
+    head(data_reactive()[[input$insurer]])
+  })
+  
+  observeEvent(input$findPercentile, {
+    req(input$insurer, input$column, input$percentileInput)
+    df <- data_reactive()[[input$insurer]]
+    col_values <- df[[input$column]]
+    
+    percentile_value <- quantile(col_values, probs = input$percentileInput / 100)
+    closest_value <- which.min(abs(col_values - percentile_value))
+    
+    min_value <- min(col_values)
+    min_value_index <- which(col_values == min_value)[1]
+    
+    output$percentileOutput <- renderText({ 
+      paste("Percentyl", input$percentileInput, "% w kolumnie", input$column, "to:", percentile_value, "i znajduje się w wierszu:", closest_value)
+    })
+    
+    output$minValueOutput <- renderText({ 
+      paste("Minimalna wartość w kolumnie", input$column, "to:", min_value, "i znajduje się w wierszu:", min_value_index)
+    })
+    
+    primary_fire_path <- file.path(input$folderPath, "Pierwotny", paste0(closest_value, ".csv"))
+    spread_fire_path <- file.path(input$folderPath, "Rozprzestrzeniony", paste0(closest_value, ".csv"))
+    if (file.exists(primary_fire_path)) {
+      primary_fire_df <- read.csv(primary_fire_path ,sep=",",dec=".")
+      colnames(primary_fire_df)[colnames(primary_fire_df)=="Latitude"]<-"lat"
+      colnames(primary_fire_df)[colnames(primary_fire_df)=="Longitude"]<-"lon"
+      print(head(primary_fire_df))
+      print(index_data)
+      #primary_fire_df<-zamien_na_nazwy_wybuch(primary_fire_df)
+      if (!is.null(index_data())) {
+        primary_fire_df$Insurer <- index_data()$Name[match(primary_fire_df$Insurer, index_data()$Insurer)]
+      }
+      primary_fire_data(primary_fire_df)
+    } else {
+      primary_fire_data(NULL)
+      showNotification(paste("Plik", primary_fire_path, "nie istnieje"), type = "error")
+    }
+    
+    if (file.exists(spread_fire_path)) {
+      spread_fire_df <- read.csv(spread_fire_path,sep=",",dec=".")
+      colnames(spread_fire_df)[colnames(spread_fire_df)=="insurance"]<-"Insurer"
+      print(head(spread_fire_df))
+      
+      # spread_fire_df<-zamien_na_nazwy(spread_fire_df)
+      if (!is.null(index_data())) {
+        spread_fire_df$Insurer <- index_data()$Name[match(spread_fire_df$Insurer, index_data()$Insurer)]
+      }
+      spread_fire_data(spread_fire_df)
+    } else {
+      spread_fire_data(NULL)
+      showNotification(paste("Plik", spread_fire_path, "nie istnieje"), type = "error")
+    }
+    #  print(primary_fire_data())
+    #  print(spread_fire_data())
+    #print(bind_rows(primary_fire_data(), spread_fire_data()))
+    
+    combined_data(bind_rows(primary_fire_data(), spread_fire_data()))
+    
+    indexed_primary_fire_path <- file.path(input$folderPath, "Pierwotny", paste0(closest_value, ".csv"))
+    if (file.exists(indexed_primary_fire_path)) {
+      indexed_primary_fire_df <- read.csv(indexed_primary_fire_path, fileEncoding = "UTF-8-BOM")
+      if (!is.null(index_data())) {
+        indexed_primary_fire_df$Insurer <- index_data()$Name[match(indexed_primary_fire_df$Insurer, index_data()$Insurer)]
+      } 
+      indexed_primary_fire_data(indexed_primary_fire_df)
+    } else {
+      indexed_primary_fire_data(NULL)
+      showNotification(paste("Plik", indexed_primary_fire_path, "nie istnieje"), type = "error")
+    }
+  })
+  
+  output$primaryFireTable <- renderTable({
+    req(primary_fire_data())
+    head(primary_fire_data())
+  })
+  
+  output$spreadFireTable <- renderTable({
+    req(spread_fire_data())
+    head(spread_fire_data())
+  })
+  
+  output$indexedPrimaryFireTable <- renderTable({
+    head(indexed_primary_fire_data())
+  })
+  
+  observeEvent(input$update_simulation_inputs, {
+    data_list <- data_reactive()
+    updateSelectInput(session, "insurance", choices = names(data_list))
+  })
+  
+  output$simulationColumnSelector <- renderUI({
+    req(input$insurance)
+    selectInput("column", "Wybierz kolumnę:", choices = names(data_reactive()[[input$insurance]]))
+  })
+  
+  observeEvent(input$insurance, {
+    req(input$insurance)
+    updateSelectInput(session, "column", choices = names(data_reactive()[[input$insurance]]))
+  })
+  
+  output$histogramPlot <- renderPlot({
+    req(data_reactive())
+    req(input$insurance)
+    req(input$column)
+    column <- input$column
+    data_df<-data_reactive()[[input$insurance]]
+    print(column)
+    print(data_df)
+    hist(as.vector(unlist(data_df[column])),breaks = 50, main = paste("Histogram", column), xlab = column, col = "blue", border = "black",)
+    # ggplot(data_df, aes_string(x = "Brutto")) +
+    # geom_histogram(binwidth = 5000, fill = "blue", color = "black", alpha = 0.7) +
+    # labs(title = paste("Rozkład", column), x = column, y = "Częstotliwość")
+  })
+  
+  output$statsTable <- renderDT({
+    req(data_reactive())
+    req(input$insurance)
+    stats <- calculate_statistics(data_reactive()[[input$insurance]])
+    datatable(stats)
+  })
+  
+  output$quantilePlot <- renderPlot({
+    req(data_reactive())
+    req(input$insurance)
+    data <- data_reactive()[[input$insurance]]
+    quantiles <- c(0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99, 0.995)
+    
+    quantile_data <- data.frame(
+      Quantile = rep(quantiles, times = ncol(data)),
+      Value = unlist(lapply(data, quantile, quantiles)),
+      Variable = rep(names(data), each = length(quantiles))
+    )
+    
+    ggplot(quantile_data, aes(x = Quantile, y = Value, color = Variable)) +
+      geom_line() +
+      geom_point() +
+      labs(title = paste("Kwantyle dla każdej kolumny", input$insurance), x = "Kwantyl", y = "Wartość szkody") +
+      theme(legend.position = "left")
+  })
+  
+  observeEvent(input$generate_report, {
+    req(data_reactive())
+    req(input$save_path)
+    
+    report_format <- input$report_format
+    
+    if (report_format == "Word") {
+      generate_report(data_reactive(), input$save_path)
+    } else if (report_format == "PDF") {
+      generate_pdf_report(data_reactive(), input$save_path)
+    }
+    
+    showModal(modalDialog(
+      title = "Raport wygenerowany",
+      "Raport został pomyślnie zapisany w podanej lokalizacji.",
+      easyClose = TRUE,
+      footer = NULL
+    ))
+  })
+  
+  current_zoom <- reactiveVal(4)
+  current_center <- reactiveVal(c(52, 19))
+  
+  observeEvent(input$mapTiles, {
+    current_zoom(input$map_zoom)
+    current_center(input$map_center)
+  })
+  
+  output$map <- renderLeaflet({
+    leaflet() %>%
+      addProviderTiles(providers$OpenStreetMap.Mapnik) %>%
+      setView(lng = 19, lat = 52, zoom = 4)
+  })
+  
+  observeEvent(input$mapTiles, {
+    proxy <- leafletProxy("map") %>%
+      clearTiles() %>%
+      addProviderTiles(switch(input$mapTiles,
+                              "OpenStreetMap.Mapnik" = providers$OpenStreetMap.Mapnik,
+                              "Esri.WorldStreetMap" = providers$Esri.WorldStreetMap,
+                              "Esri.WorldImagery" = providers$Esri.WorldImagery,
+                              "OpenTopoMap" = providers$OpenTopoMap)) %>%
+      setView(lng = current_center()[2], lat = current_center()[1], zoom = current_zoom())
+  })
+  
+  observe({
+    leafletProxy("map") %>%
+      clearMarkers() %>%
+      clearShapes()
+    
+    # Sprawdzenie, czy dane są dostępne
+    req(primary_fire_data(), spread_fire_data())
+    # Sprawdzenie, czy wybrano jakichkolwiek ubezpieczycieli
+    if (is.null(input$insurers) || length(input$insurers) == 0) {
+      filtered_data <- primary_fire_data()
+      filtered_new_buildings <- spread_fire_data()
+    } else {
+      filtered_data <- primary_fire_data() %>% filter(Insurer %in% input$insurers)
+      filtered_new_buildings <- spread_fire_data() %>% filter(Insurer %in% input$insurers)
+    }
+    
+    # Sprawdzenie, czy wybrano jakiekolwiek województwa
+    if (!is.null(input$regions) && length(input$regions) > 0) {
+      filtered_data <- filtered_data %>% filter(Region %in% input$regions)
+      filtered_new_buildings <- filtered_new_buildings %>% filter(Region %in% input$regions)
+    }
+    
+    # Sprawdzenie, czy wybrano jakiekolwiek miesiące
+    if (!is.null(input$months) && length(input$months) > 0) {
+      filtered_data <- filtered_data %>% filter(Month %in% input$months)
+      filtered_new_buildings <- filtered_new_buildings %>% filter(Month %in% input$months)
+    }
+    
+    # Sprawdzenie, czy wybrano zakres sumy ubezpieczenia
+    if (!is.na(input$sumValueMin)) {
+      filtered_data <- filtered_data %>% filter(SumValue >= input$sumValueMin)
+      filtered_new_buildings <- filtered_new_buildings %>% filter(SumValue >= input$sumValueMin)
+    }
+    if (!is.na(input$sumValueMax)) {
+      filtered_data <- filtered_data %>% filter(SumValue <= input$sumValueMax)
+      filtered_new_buildings <- filtered_new_buildings %>% filter(SumValue <= input$sumValueMax)
+    }
+    
+    proxy <- leafletProxy("map")
+    
+    # Mapa z oryginalnymi i nowymi budynkami
+    proxy %>%
+      addCircleMarkers(data = filtered_data,
+                       ~lon, ~lat,
+                       color = ~ifelse(Insurer == input$highlight, "red", "black"),
+                       radius = ~3,
+                       popup = ~paste("Ubezpieczyciel:", Insurer, "<br>",
+                                      "Województwo:", Region, "<br>",
+                                      "Miesiąc:", Month + 1, "<br>",
+                                      "SU:", SumValue, "<br>",
+                                      "Szkoda",ReasonFire, "<br>"
+                       ),
+                       fillOpacity = 0.7,
+                       group = "Wybuchy") %>%
+      addCircleMarkers(data = filtered_new_buildings,
+                       ~lon, ~lat,
+                       color = ~ifelse(Insurer == input$highlight, "orange", "blue"),
+                       radius = 3,
+                       popup = ~paste("Insurer:", Insurer, "<br>",
+                                      "Promień",Promien,"<br>",
+                                      "Województwo:", Region, "<br>",
+                                      "Miesiąc:", Month + 1, "<br>",
+                                      "SU:", SumValue, "<br>",
+                                      "ReasonFire:", ReasonFire),
+                       fillOpacity = 0.7,
+                       group = "Rozprzestrzenienia") %>%
+      addCircles(data = filtered_data,
+                 ~lon, ~lat,
+                 radius = 200,
+                 color = "green",
+                 fill = FALSE,
+                 group = "Promień")
+    
+    # Dodaj legendę tylko raz
+    proxy %>%
+      addLayersControl(
+        overlayGroups = c("Wybuchy", "Rozprzestrzenienia", "Promień"),
+        options = layersControlOptions(collapsed = FALSE)
+      ) %>%
+      clearControls() %>%
+      addLegend(position = "bottomright",
+                colors = c("black", "blue", "red","orange", "green"),
+                labels = c("Wybuch", "Rozprzestrzenienie", "Wybrany ub. wybuch","Wybrany ub. rozprze.","Promień"),
+                title = "Typ budynku") %>%
+      addMiniMap(toggleDisplay = TRUE)
+  })
+  
+  observeEvent(input$findPercentileVis, {
+    req(input$insurerVis, input$columnVis, input$percentileInputVis)
+    
+    df <- data_reactive()[[input$insurerVis]]
+    col_values <- df[[input$columnVis]]
+    
+    percentile_value <- quantile(col_values, probs = input$percentileInputVis / 100)
+    closest_value <- which.min(abs(col_values - percentile_value))
+    
+    output$percentileOutputVis <- renderText({ 
+      paste("Percentyl", input$percentileInputVis, "% to:", percentile_value, "i znajduje się w wierszu:", closest_value)
+    })
+    
+    primary_fire_path <- file.path(input$folderPath, "Pierwotny", paste0(closest_value, ".csv"))
+    spread_fire_path <- file.path(input$folderPath, "Rozprzestrzeniony", paste0(closest_value, ".csv"))
+    
+    if (file.exists(primary_fire_path)) {
+      primary_fire_df <- read.csv(primary_fire_path, fileEncoding = "UTF-8-BOM")
+      print(head(primary_fire_df))
+      if (!is.null(index_data())) {
+        primary_fire_df$Insurer <- index_data()$Name[match(primary_fire_df$Insurer, index_data()$Insurer)]
+      }
+      primary_fire_data(primary_fire_df)
+    } else {
+      primary_fire_data(NULL)
+      showNotification(paste("Plik", primary_fire_path, "nie istnieje"), type = "error")
+    }
+    
+    if (file.exists(spread_fire_path)) {
+      spread_fire_df <- read.csv(spread_fire_path, fileEncoding = "UTF-8-BOM")
+      if (!is.null(index_data())) {
+        spread_fire_df$Insurer <- index_data()$Name[match(spread_fire_df$Insurer, index_data()$Insurer)]
+      }
+      spread_fire_data(spread_fire_df)
+    } else {
+      spread_fire_data(NULL)
+      showNotification(paste("Plik", spread_fire_path, "nie istnieje"), type = "error")
+    }
+    
+    combined_data(bind_rows(primary_fire_data(), spread_fire_data()))
+    
+    indexed_primary_fire_path <- file.path(input$folderPath, "Pierwotny", paste0(closest_value, ".csv"))
+    if (file.exists(indexed_primary_fire_path)) {
+      indexed_primary_fire_df <- read.csv(indexed_primary_fire_path, fileEncoding = "UTF-8-BOM")
+      if (!is.null(index_data())) {
+        indexed_primary_fire_df$Insurer <- index_data()$Name[match(indexed_primary_fire_df$Insurer, index_data()$Insurer)]
+      } 
+      indexed_primary_fire_data(indexed_primary_fire_df)
+    } else {
+      indexed_primary_fire_data(NULL)
+      showNotification(paste("Plik", indexed_primary_fire_path, "nie istnieje"), type = "error")
+    }
+  })
+  
+  observe({
+    req(combined_data())
+    
+    # Aktualizacja listy ubezpieczycieli w zakładce "Analiza budynków"
+    insurers <- unique(combined_data()$Insurer)
+    updateSelectizeInput(session, "insurersAnalysis", choices = insurers, selected = "all", server = TRUE)
+  })
+  
+  observeEvent(input$division, {
+    shinyjs::show(id = "loadingOverlay")
+    shinyjs::show(id = "loadingSpinner")
+    
+    # Ukrycie spinnera i overlay po zakończeniu przetwarzania
+    on.exit({
+      shinyjs::hide(id = "loadingOverlay")
+      shinyjs::hide(id = "loadingSpinner")
+    }, add = TRUE)
+    
+    selectedData <- reactive({
+      message("Przygotowywanie danych do analizy")
+      
+      # Połączenie danych z primary_fire_data i spread_fire_data
+      combined_data_df <- combined_data()
+      
+      # Przekształcenie do obiektu sf
+      if (is.null(combined_data_df)) {
+        return(NULL)
+      }
+      
+      punkty <- st_as_sf(combined_data_df, coords = c("lon", "lat"), crs = 4326)
+      
+      punkty_transformed <- st_transform(punkty, st_crs(get(input$division)))
+      
+      # Filtruj dane na podstawie wybranych miesięcy i ubezpieczycieli
+      if (!("all" %in% input$monthsAnalysis)) {
+        punkty_transformed <- punkty_transformed[punkty_transformed$Month %in% input$monthsAnalysis, ]
+      }
+      if (!("all" %in% input$insurersAnalysis)) {
+        punkty_transformed <- punkty_transformed[punkty_transformed$Insurer %in% input$insurersAnalysis, ]
+      }
+      
+      if (nrow(punkty_transformed) == 0) {
+        return(NULL)
+      }
+      
+      punkty_jednostki <- st_join(punkty_transformed, get(input$division), join = st_intersects)
+      
+      if (input$variable == "LiczbaPozarow") {
+        df <- aggregate(IndexTable ~ JPT_NAZWA_, data = punkty_jednostki, length)
+        names(df)[2] <- "Value"
+      } else if (input$variable == "SumValue") {
+        df <- aggregate(SumValue ~ JPT_NAZWA_, data = punkty_jednostki, sum)
+        names(df)[2] <- "Value"
+      } else if (input$variable == "MeanValue") {
+        df <- aggregate(SumValue ~ JPT_NAZWA_, data = punkty_jednostki, mean)
+        names(df)[2] <- "Value"
+      }
+      message("Dane do analizy przygotowane")
+      df
+    })
+    
+    output$barPlot <- renderPlot({
+      df <- selectedData()
+      req(df)
+      
+      top_n <- input$top_n
+      
+      if (input$top_type == "largest") {
+        df <- df[order(-df$Value), ][1:top_n, ]
+      } else {
+        df <- df[order(df$Value), ][1:top_n, ]
+      }
+      
+      message("Generowanie wykresu słupkowego")
+      ggplot(df, aes(x = reorder(JPT_NAZWA_, Value), y = Value, fill = Value)) +
+        geom_bar(stat = "identity") +
+        ggtitle(paste("Top", top_n, ifelse(input$top_type == "largest", "Jednostek z Najwyższą", "Jednostek z Najniższą"), input$variable)) +
+        xlab(input$division) +
+        ylab(input$variable) +
+        theme_minimal() +
+        coord_flip() +
+        scale_fill_gradient(low = "lightblue", high = "darkblue")
+    })
+    
+    output$mapPlot <- renderLeaflet({
+      df <- selectedData()
+      req(df)
+      
+      message("Generowanie mapy")
+      
+      jednostki_data <- merge(get(input$division), df, by.x = "JPT_NAZWA_", by.y = "JPT_NAZWA_", all.x = TRUE)
+      jednostki_data$Value[is.na(jednostki_data$Value)] <- 0  # Zastąpienie brakujących wartości zerami
+      
+      pal <- colorNumeric(palette = "YlOrRd", domain = jednostki_data$Value, na.color = "transparent")
+      
+      leaflet(jednostki_data) %>%
+        addTiles() %>%
+        setView(lng = 19.1451, lat = 51.9194, zoom = 6) %>%  # Ustawienie widoku na Polskę
+        addPolygons(fillColor = ~ifelse(Value == 0, "transparent", pal(Value)), color = "#BDBDC3", weight = 1,
+                    fillOpacity = 0.7, smoothFactor = 0.5,
+                    popup = ~paste(JPT_NAZWA_, "<br>", input$variable, ": ", Value)) %>%
+        addLegend(pal = pal, values = ~Value, opacity = 0.7, title = input$variable, position = "bottomright")
+    })
+    
+    output$monthPlot <- renderPlot({
+      df <- selectedData()
+      req(df)
+      
+      message("Generowanie wykresu miesięcznego")
+      
+      combined_data_filtered <- combined_data()
+      
+      if (!("all" %in% input$monthsAnalysis)) {
+        combined_data_filtered <- combined_data_filtered[combined_data_filtered$Month %in% input$monthsAnalysis, ]
+      }
+      if (!("all" %in% input$insurersAnalysis)) {
+        combined_data_filtered <- combined_data_filtered[combined_data_filtered$Insurer %in% input$insurersAnalysis, ]
+      }
+      
+      if (input$variable == "LiczbaPozarow") {
+        liczba_pozarow_miesiac <- combined_data_filtered %>%
+          group_by(Month) %>%
+          summarise(Value = n())
+      } else if (input$variable == "SumValue") {
+        liczba_pozarow_miesiac <- combined_data_filtered %>%
+          group_by(Month) %>%
+          summarise(Value = sum(SumValue))
+      } else if (input$variable == "MeanValue") {
+        liczba_pozarow_miesiac <- combined_data_filtered %>%
+          group_by(Month) %>%
+          summarise(Value = mean(SumValue))
+      }
+      
+      ggplot(liczba_pozarow_miesiac, aes(x = Month, y = Value)) +
+        geom_line(group = 1) +
+        geom_point() +
+        ggtitle(paste(input$variable, "w Poszczególnych Miesiącach")) +
+        xlab("Miesiąc") +
+        ylab(input$variable) +
+        scale_x_continuous(breaks = 1:12, labels = month.name) +
+        theme_minimal()
+    })
+  })
+}
+
+# Uruchomienie aplikacji Shiny
+shinyApp(ui = ui, server = server)
+
+
+
