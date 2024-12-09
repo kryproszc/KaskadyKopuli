@@ -1,12 +1,3 @@
-W prognozie przep.ywow najlepszego oszacowania brutto dla bezpo.rednich kosztow likwidacji szkod, dla jednorodnych grup ryzyka: 9_CREDIT, 9_BONDS i 10, PZU SA wykazuje warto.. przep.ywu dla szkod nie zg.oszonych w wysoko.ci 0. Wbrew stwierdzeniu, .e .Zak.ad ustali. ........_..2........ arbitralnie 0 bez modelowania.h (strona 98 Protoko.u), warto.. ta oparta jest na analizie danych zg.oszonych, jakie mo.na obserwowa. w trojk.cie szkod. Dla grupy 9_CREDIT, dla lat szkody 2019-2024, warto.. szkod zg.oszonych wynosi 0, dla grupy 9_BONDS warto.ci szkod w ostatnich latach s. bardzo niskie, np. dla roku szkody 2023 warto.. szkod zg.oszonych to 254 pln dla grupy 10 dla lat szkody 2022-2024 warto.. szkod zg.oszonych wynosi 0. Dla takich danych model daje warto.ci szkod nie zg.oszonych rowne zero lub ujemne lub dodatnie w granicach 1 tys. pln. W takiej sytuacji, nawet najbardziej radykalne podej.cie, zastosowanie innego modelu, nie mo.e da. warto.ci istotnie odstaj.cych od warto.ci 0. Dlatego, na t. chwil., dla tej cz..ci przep.ywu szkod niezg.oszonych, przyj.to warto.. 0. Ponadto, co kwarta., dane szkodowe dla tych 3 grup s. analizowane i kontrolowane pod wzgl.dem zg.aszania szkod.
+https://www.microsoft.com/pl-pl/d/subskrypcja-programu-visual-studio-enterprise/dg7gmgf0dst4?activetab=pivot:informacjeog%C3%B3lnetab
 
-
-W zakresie informacji i wyjaśnień przedstawionych w Zastrzeżeniach w odniesieniu do powyższego pkt
-
-Zespół inspekcyjny stoi na stanowisku, że jeśli Zakład przewiduje wypłatę odszkodowań i świadczeń dla jednorodnych grup ryzyka: 9_BONDS, 9_CREDIT i 10, to naturalnym i nieodłącznym elementem jest również ponoszenie bezpośrednich kosztów likwidacji szkód. 
-Wobec powyższego jeżeli Zakład wyznacza wartość IBNR_S2 większą od zera, to powinien również wyznaczyć wartość 〖IBNR_S2 〗_(ALAE ), a nie przyjmować arbitralnie 0.
-
-Dla trzech jednorodnych grup ryzyka: 09_BONDS, 09_CREDIT, 10 Zakład ustalił 〖IBNR_S2 〗_(ALAE ) arbitralnie 0 bez modelowania. Zespół inspekcyjny, na podstawie pliku „RESQ_CLAIMS_S2_2024.Q1.xlsx”, (zał. nr 24) ustalił, iż wyznaczone wartości IBNR_S2 przez Zakład dla jednorodnych grup ryzyka: 9_BONDS, 9_CREDIT, 10 są większe od zera (Tabela 23). Zakład przekazał (zał. nr 82), iż dla tych trzech HRG od co najmniej 2 lat szkodowych nie ma żadnych szkód zgłoszonych. Zakład zaznaczył, że danych w trójkącie jest niewiele, co nie pozwala na zbudowanie sensownego modelu z wykorzystaniem metody chain-ladder – nawet gdyby taki model próbować zbudować, to i tak daje 〖IBNR_S2 〗_(ALAE ) w wysokości zero albo nawet ujemną wartość. W związku z powyższym przyjęto, że 〖IBNR_S2 〗_(ALAE ) nie będzie wyznaczany (〖IBNR 〗_(ALAE )=0).
-
-
-PZU SA stoi na stanowisku, że takie podejście nie stanowi naruszenia prawa. Niemniej jednak, Spółka zmodyfikuje istniejące modele, w sposób pozwalający na wykazanie rezerwy w LoB 9 i 10 większej od wartości 0.
+https://visualstudio.microsoft.com/pl/vs/pricing/?tab=Enterprise
