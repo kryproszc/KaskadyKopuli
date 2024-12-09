@@ -1,3 +1,6 @@
-https://www.microsoft.com/pl-pl/d/subskrypcja-programu-visual-studio-enterprise/dg7gmgf0dst4?activetab=pivot:informacjeog%C3%B3lnetab
+Insurer,Longitude,Latitude,Region,Month,SumValue,IndexTable,FireSize,ReasonFire
 
-https://visualstudio.microsoft.com/pl/vs/pricing/?tab=Enterprise
+Promien,lat,lon,insurance,resurance,SumValue, WIelkoscKwota,IndexTable,Region,Month,ReasonFire
+
+
+Brutto,Brutto_Katastroficzny,Netto,Netto_Katastroficzny
