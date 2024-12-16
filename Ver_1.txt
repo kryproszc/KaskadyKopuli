@@ -1,6 +1,0 @@
-Insurer,Longitude,Latitude,Region,Month,SumValue,IndexTable,FireSize,ReasonFire
-
-Promien,lat,lon,insurance,resurance,SumValue, WIelkoscKwota,IndexTable,Region,Month,ReasonFire
-
-
-Brutto,Brutto_Katastroficzny,Netto,Netto_Katastroficzny
