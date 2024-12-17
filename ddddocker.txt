@@ -1,18 +1,24 @@
+library(foreach)
+library(doParallel)
 
-stawianie bazy
+# Ustawienie liczby wątków na ilość rdzeni procesora
+numCores <- detectCores() - 1
+cl <- makeCluster(numCores)
+registerDoParallel(cl)
 
-docker run -it -e PBF_URL=https://download.geofabrik.de/europe/poland-latest.osm.pbf -e REPLICATION_URL=https://download.geofabrik.de/europe/poland-updates/ -p 9741:8080 -p 5432:5432 --name nominatimdb mediagis/nominatim:4.4
+# Zrównoleglenie pętli
+wiener_surowe_copy <- foreach(i = 1:dim(wiener_geokodowane)[1], .combine = rbind) %dopar% {
+  umowa_przed <- umowy_przed_geokodowane[i]
+  ind_zmiany <- which(umowy_po_surowe == umowa_przed)
 
+  wiener_surowe_copy[ind_zmiany, 14] <- wiener_geokodowane[i, 13]
+  wiener_surowe_copy[ind_zmiany, 15] <- wiener_geokodowane[i, 14]
+  wiener_surowe_copy[ind_zmiany, 16] <- wiener_geokodowane[i, 15]
+  wiener_surowe_copy[ind_zmiany, 17] <- wiener_geokodowane[i, 16]
+  wiener_surowe_copy[ind_zmiany, 18] <- wiener_geokodowane[i, 17]
+}
 
-Po postawieniu konfiguracja
-plik postgrs sql w linii 192
-max_parallel_workers = (zmień tak, by został jeden wątek)        # number of max_worker_processes that
+# Zakończenie klastra
+stopCluster(cl)
 
-i w pliku  apache2 w 105 linii
-MaxKeepAliveRequest 100 
-zmien 100 na 0
-
-
-i restart:
-sudo service postgresql restart
-sudo service apache2 restart
+head(wiener_surowe_copy[300000, ])
