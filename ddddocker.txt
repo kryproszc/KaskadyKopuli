@@ -1,1 +1,0 @@
-df$Szerokosc_dl[df$Flaga_1_0 == 9 & duplicated(df$Szerokosc_dl)]
