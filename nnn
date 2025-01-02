@@ -1,41 +1,23 @@
-# 1. Analiza Skewness (asymetria rozkładu)
-library(e1071)  # Upewnij się, że masz zainstalowany pakiet e1071
-
-# Obliczanie skewness (asymetrii) dla danych
-skew_value <- skewness(simulations_data)
-cat("Skewness (Asymetria rozkładu):", skew_value, "\n")
-
-# Interpretacja skewness
-if (skew_value > 0) {
-  cat("Rozkład jest prawoskrętny (skewness > 0)\n")
-} else if (skew_value < 0) {
-  cat("Rozkład jest lewoskrętny (skewness < 0)\n")
-} else {
-  cat("Rozkład jest symetryczny (skewness = 0)\n")
+# Funkcja do obliczania stabilności odchylenia standardowego
+compute_stability_sd <- function(data, steps) {
+  sds <- sapply(1:steps, function(x) sd(data[1:x]))
+  return(sds)
 }
 
-# 2. Analiza kroków przyrostowych: Stabilność średniej i kwantyla 0.995
-compute_stability_incremental <- function(data, steps, quantile_level = 0.995) {
-  mean_values <- sapply(1:steps, function(x) mean(data[1:x]))
-  quantile_values <- sapply(1:steps, function(x) quantile(data[1:x], quantile_level))
-  
-  # Zwróć średnią i kwantyl dla każdego kroku
-  return(list(mean_values = mean_values, quantile_values = quantile_values))
-}
+# Obliczenia dla odchylenia standardowego
+stability_sd <- compute_stability_sd(simulations_data, steps)
 
-# Parametry
-steps <- length(simulations_data)  # Liczba prób (np. 20 000)
+# Rysowanie wykresów (dodajemy odchylenie standardowe jako trzeci wykres)
+par(mfrow = c(1, 3))  # Trzy wykresy obok siebie
 
-# Obliczenia kroków przyrostowych dla średniej i kwantyla 0.995
-stability_incremental <- compute_stability_incremental(simulations_data, steps)
-
-# Rysowanie wykresów
-par(mfrow = c(1, 2))  # Dwa wykresy obok siebie
-
-# Wykres: Stabilność średniej
+# Wykres 1: Stabilność średniej
 plot(1:steps, stability_incremental$mean_values, type = "l", col = "blue", 
      xlab = "Liczba symulacji", ylab = "Średnia", main = "Stabilność średniej")
 
-# Wykres: Stabilność kwantyla 0.995
+# Wykres 2: Stabilność kwantyla 0.995
 plot(1:steps, stability_incremental$quantile_values, type = "l", col = "red", 
      xlab = "Liczba symulacji", ylab = "Kwantyl 0.995", main = "Stabilność kwantyla 0.995")
+
+# Wykres 3: Stabilność odchylenia standardowego
+plot(1:steps, stability_sd, type = "l", col = "green", 
+     xlab = "Liczba symulacji", ylab = "Odchylenie standardowe", main = "Stabilność odchylenia standardowego")
