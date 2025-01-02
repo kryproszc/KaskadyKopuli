@@ -1,3 +1,23 @@
+# Funkcja do obliczenia bootstrapu dla odchylenia standardowego
+bootstrap_sd <- function(data, num_samples) {
+  bootstrap_samples <- replicate(num_samples, sample(data, length(data), replace = TRUE))
+  sds <- apply(bootstrap_samples, 2, sd)
+  
+  # Obliczanie przedziałów ufności
+  ci_lower <- quantile(sds, 0.025)
+  ci_upper <- quantile(sds, 0.975)
+  
+  return(list(sds = sds, ci_lower = ci_lower, ci_upper = ci_upper))
+}
+
+# Przeprowadzenie bootstrapu dla odchylenia standardowego
+num_samples <- 1000
+bootstrap_sd_result <- bootstrap_sd(simulations_data, num_samples)
+
+# Teraz możemy wykorzystać bootstrap_sd_result do rysowania przedziałów ufności na wykresie.
+
+
+
 # Wykresy
 par(mfrow = c(1, 3))  # Trzy wykresy obok siebie
 
@@ -19,5 +39,5 @@ abline(h = bootstrap_quantile_995$ci_upper, col = "green", lty = 3)  # Przedzia�
 plot(1:steps, stability_sd, type = "l", col = "green", 
      xlab = "Liczba symulacji", ylab = "Odchylenie standardowe", main = "Stabilność odchylenia standardowego")
 abline(h = sd_value, col = "red", lty = 2)  # Linia pozioma dla odchylenia standardowego
-abline(h = bootstrap_sd$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
-abline(h = bootstrap_sd$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
+abline(h = bootstrap_sd_result$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
+abline(h = bootstrap_sd_result$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
