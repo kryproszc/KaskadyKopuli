@@ -1,17 +1,31 @@
-# Ustawienie ziarna losowości
-set.seed(42)
+# Obliczanie podstawowych statystyk
+mean_value <- mean(simulations_data)
+median_value <- median(simulations_data)
+variance_value <- var(simulations_data)
+sd_value <- sd(simulations_data)
 
-# Załaduj dane symulacyjne (np. simulations_data) - tu wstaw swoje dane
-simulations_data <- rnorm(1000,0,1)
+# Obliczanie kwantyli
+quantile_90 <- quantile(simulations_data, 0.9)
+quantile_95 <- quantile(simulations_data, 0.95)
+quantile_995 <- quantile(simulations_data, 0.995)
 
-# Funkcja do obliczania średniej z rosnącej liczby symulacji
-compute_convergence <- function(data, steps) {
-  means <- sapply(1:steps, function(x) mean(data[1:x]))
-  return(means)
-}
+# Tabela wyników
+stats_table <- data.frame(
+  "Mean" = mean_value,
+  "Median" = median_value,
+  "Variance" = variance_value,
+  "Standard Deviation" = sd_value,
+  "90th Percentile" = quantile_90,
+  "95th Percentile" = quantile_95,
+  "99.5th Percentile" = quantile_995
+)
 
-# Funkcja bootstrapowa
-bootstrap <- function(data, num_samples, statistic, ci_percentile = 95) {
+# Wyświetlenie tabeli
+print(stats_table)
+
+
+# Funkcja bootstrapowa do obliczenia przedziałów ufności dla różnych statystyk
+bootstrap_ci <- function(data, num_samples, statistic, ci_percentile = 95) {
   bootstrap_samples <- replicate(num_samples, sample(data, length(data), replace = TRUE))
   statistics <- apply(bootstrap_samples, 2, statistic)
   
@@ -24,31 +38,39 @@ bootstrap <- function(data, num_samples, statistic, ci_percentile = 95) {
   return(list(statistics = statistics, ci_lower = ci_lower, ci_upper = ci_upper))
 }
 
-# Liczba kroków do analizy konwergencji
-steps <- length(simulations_data)
-
-# Obliczamy średnią na rosnącej liczbie symulacji
-convergence_means <- compute_convergence(simulations_data, steps)
-
-# Bootstrap dla średniej
+# Przeprowadzenie bootstrapu dla różnych statystyk
 num_samples <- 1000
-bootstrap_results <- bootstrap(simulations_data, num_samples, mean)
+bootstrap_mean <- bootstrap_ci(simulations_data, num_samples, mean)
+bootstrap_median <- bootstrap_ci(simulations_data, num_samples, median)
+bootstrap_quantile_90 <- bootstrap_ci(simulations_data, num_samples, function(x) quantile(x, 0.9))
+bootstrap_quantile_95 <- bootstrap_ci(simulations_data, num_samples, function(x) quantile(x, 0.95))
+bootstrap_quantile_995 <- bootstrap_ci(simulations_data, num_samples, function(x) quantile(x, 0.995))
 
-# Rysowanie wykresu z poprawionym rozmiarem legendy i tekstu
-# Rysowanie wykresu z poprawionym rozmiarem legendy i tekstu
-par(mfrow=c(1,2), mar=c(4, 4, 3, 2))  # Ustawienie marginesów i dwóch wykresów obok siebie
+# Tabela wyników przedziałów ufności
+ci_table <- data.frame(
+  "Statistic" = c("Mean", "Median", "90th Percentile", "95th Percentile", "99.5th Percentile"),
+  "CI Lower" = c(bootstrap_mean$ci_lower, bootstrap_median$ci_lower, bootstrap_quantile_90$ci_lower,
+                 bootstrap_quantile_95$ci_lower, bootstrap_quantile_995$ci_lower),
+  "CI Upper" = c(bootstrap_mean$ci_upper, bootstrap_median$ci_upper, bootstrap_quantile_90$ci_upper,
+                 bootstrap_quantile_95$ci_upper, bootstrap_quantile_995$ci_upper)
+)
 
-# Wykres 1: Konwergencja średniej
-plot(1:steps, convergence_means, type = "l", col = "blue", 
-     xlab = "Liczba symulacji", ylab = "Średnia",
-     main = "Analiza konwergencji", cex.main = 1, cex.lab = 0.9, cex.axis = 0.8)
+# Wyświetlenie tabeli przedziałów ufności
+print(ci_table)
 
-# Wykres 2: Rozkład bootstrapowy średnich
-hist(bootstrap_results$statistics, breaks = 30, col = 'skyblue', border = 'black', 
-     main = 'Bootstrap Mean Distribution', xlab = 'Średnia z próbek', cex.main = 1, cex.lab = 0.9, cex.axis = 0.8)
 
-# Dodajemy linię dla średniej z całego zbioru
+# Rysowanie histogramu
+par(mfrow=c(1,2))  # Dwa wykresy obok siebie
+
+# Wykres 1: Rozkład danych
+hist(simulations_data, breaks = 30, col = 'skyblue', border = 'black', 
+     main = 'Rozkład wyników symulacji', xlab = 'Wyniki', ylab = 'Częstość')
+
+# Wykres 2: Bootstrap dla średniej
+hist(bootstrap_mean$statistics, breaks = 30, col = 'lightgreen', border = 'black', 
+     main = 'Bootstrap dla średniej', xlab = 'Średnia z próbek', ylab = 'Częstość')
 abline(v = mean(simulations_data), col = 'red', lwd = 2, lty = 2)
 
-# Zmniejszamy rozmiar czcionki w legendzie
-legend("topright", legend = c('Średnia z całego zbioru'), col = 'red', lty = 2, lwd = 2, cex = 0.8) # Zmniejszamy rozmiar czcionki
+# Zapisanie wyników
+write.csv(stats_table, "statystyki.csv")
+write.csv(ci_table, "przedzialy_ufnosci.csv")
