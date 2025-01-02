@@ -1,0 +1,33 @@
+# Ustawienie ziarna losowości
+set.seed(42)
+
+# Tworzenie przykładowych danych symulacyjnych (20 000 próbek)
+simulations_data <- rnorm(20000, mean = 50, sd = 10)
+
+# Funkcja do przeprowadzania bootstrapu
+bootstrap <- function(data, num_samples, statistic, ci_percentile = 95) {
+  bootstrap_samples <- replicate(num_samples, sample(data, length(data), replace = TRUE))
+  statistics <- apply(bootstrap_samples, 2, statistic)
+  
+  lower_percentile <- (100 - ci_percentile) / 2
+  upper_percentile <- 100 - lower_percentile
+  
+  ci_lower <- quantile(statistics, lower_percentile / 100)
+  ci_upper <- quantile(statistics, upper_percentile / 100)
+  
+  return(list(statistics = statistics, ci_lower = ci_lower, ci_upper = ci_upper))
+}
+
+# Przeprowadzenie bootstrapu dla średniej
+num_samples <- 1000
+bootstrap_results <- bootstrap(simulations_data, num_samples, mean)
+
+# Wyniki: przedział ufności dla średniej
+bootstrap_results$ci_lower
+bootstrap_results$ci_upper
+
+# Wizualizacja rozkładu bootstrapowych średnich
+hist(bootstrap_results$statistics, breaks = 30, col = 'skyblue', border = 'black', 
+     main = 'Bootstrap Mean Distribution', xlab = 'Średnia z próbek')
+abline(v = mean(simulations_data), col = 'red', lwd = 2, lty = 2)
+legend("topright", legend = c('Średnia z całego zbioru'), col = 'red', lty = 2, lwd = 2)
