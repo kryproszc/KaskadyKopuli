@@ -1,76 +1,41 @@
-# Obliczanie podstawowych statystyk
-mean_value <- mean(simulations_data)
-median_value <- median(simulations_data)
-variance_value <- var(simulations_data)
-sd_value <- sd(simulations_data)
+# 1. Analiza Skewness (asymetria rozkładu)
+library(e1071)  # Upewnij się, że masz zainstalowany pakiet e1071
 
-# Obliczanie kwantyli
-quantile_90 <- quantile(simulations_data, 0.9)
-quantile_95 <- quantile(simulations_data, 0.95)
-quantile_995 <- quantile(simulations_data, 0.995)
+# Obliczanie skewness (asymetrii) dla danych
+skew_value <- skewness(simulations_data)
+cat("Skewness (Asymetria rozkładu):", skew_value, "\n")
 
-# Tabela wyników
-stats_table <- data.frame(
-  "Mean" = mean_value,
-  "Median" = median_value,
-  "Variance" = variance_value,
-  "Standard Deviation" = sd_value,
-  "90th Percentile" = quantile_90,
-  "95th Percentile" = quantile_95,
-  "99.5th Percentile" = quantile_995
-)
-
-# Wyświetlenie tabeli
-print(stats_table)
-
-
-# Funkcja bootstrapowa do obliczenia przedziałów ufności dla różnych statystyk
-bootstrap_ci <- function(data, num_samples, statistic, ci_percentile = 95) {
-  bootstrap_samples <- replicate(num_samples, sample(data, length(data), replace = TRUE))
-  statistics <- apply(bootstrap_samples, 2, statistic)
-  
-  lower_percentile <- (100 - ci_percentile) / 2
-  upper_percentile <- 100 - lower_percentile
-  
-  ci_lower <- quantile(statistics, lower_percentile / 100)
-  ci_upper <- quantile(statistics, upper_percentile / 100)
-  
-  return(list(statistics = statistics, ci_lower = ci_lower, ci_upper = ci_upper))
+# Interpretacja skewness
+if (skew_value > 0) {
+  cat("Rozkład jest prawoskrętny (skewness > 0)\n")
+} else if (skew_value < 0) {
+  cat("Rozkład jest lewoskrętny (skewness < 0)\n")
+} else {
+  cat("Rozkład jest symetryczny (skewness = 0)\n")
 }
 
-# Przeprowadzenie bootstrapu dla różnych statystyk
-num_samples <- 1000
-bootstrap_mean <- bootstrap_ci(simulations_data, num_samples, mean)
-bootstrap_median <- bootstrap_ci(simulations_data, num_samples, median)
-bootstrap_quantile_90 <- bootstrap_ci(simulations_data, num_samples, function(x) quantile(x, 0.9))
-bootstrap_quantile_95 <- bootstrap_ci(simulations_data, num_samples, function(x) quantile(x, 0.95))
-bootstrap_quantile_995 <- bootstrap_ci(simulations_data, num_samples, function(x) quantile(x, 0.995))
+# 2. Analiza kroków przyrostowych: Stabilność średniej i kwantyla 0.995
+compute_stability_incremental <- function(data, steps, quantile_level = 0.995) {
+  mean_values <- sapply(1:steps, function(x) mean(data[1:x]))
+  quantile_values <- sapply(1:steps, function(x) quantile(data[1:x], quantile_level))
+  
+  # Zwróć średnią i kwantyl dla każdego kroku
+  return(list(mean_values = mean_values, quantile_values = quantile_values))
+}
 
-# Tabela wyników przedziałów ufności
-ci_table <- data.frame(
-  "Statistic" = c("Mean", "Median", "90th Percentile", "95th Percentile", "99.5th Percentile"),
-  "CI Lower" = c(bootstrap_mean$ci_lower, bootstrap_median$ci_lower, bootstrap_quantile_90$ci_lower,
-                 bootstrap_quantile_95$ci_lower, bootstrap_quantile_995$ci_lower),
-  "CI Upper" = c(bootstrap_mean$ci_upper, bootstrap_median$ci_upper, bootstrap_quantile_90$ci_upper,
-                 bootstrap_quantile_95$ci_upper, bootstrap_quantile_995$ci_upper)
-)
+# Parametry
+steps <- length(simulations_data)  # Liczba prób (np. 20 000)
 
-# Wyświetlenie tabeli przedziałów ufności
-print(ci_table)
+# Obliczenia kroków przyrostowych dla średniej i kwantyla 0.995
+stability_incremental <- compute_stability_incremental(simulations_data, steps)
 
+# Rysowanie wykresów
+par(mfrow = c(1, 2))  # Dwa wykresy obok siebie
 
-# Rysowanie histogramu
-par(mfrow=c(1,2))  # Dwa wykresy obok siebie
+# Wykres: Stabilność średniej
+plot(1:steps, stability_incremental$mean_values, type = "l", col = "blue", 
+     xlab = "Liczba symulacji", ylab = "Średnia", main = "Stabilność średniej")
 
-# Wykres 1: Rozkład danych
-hist(simulations_data, breaks = 30, col = 'skyblue', border = 'black', 
-     main = 'Rozkład wyników symulacji', xlab = 'Wyniki', ylab = 'Częstość')
-
-# Wykres 2: Bootstrap dla średniej
-hist(bootstrap_mean$statistics, breaks = 30, col = 'lightgreen', border = 'black', 
-     main = 'Bootstrap dla średniej', xlab = 'Średnia z próbek', ylab = 'Częstość')
-abline(v = mean(simulations_data), col = 'red', lwd = 2, lty = 2)
-
-# Zapisanie wyników
-write.csv(stats_table, "statystyki.csv")
-write.csv(ci_table, "przedzialy_ufnosci.csv")
+# Wykres: Stabilność kwantyla 0.995
+plot(1:steps, stability_incremental$quantile_values, type = "l", col = "red", 
+     xlab = "Liczba symulacji", ylab = "Kwantyl 0.995", main = "Stabilność kwantyla 0.995")
