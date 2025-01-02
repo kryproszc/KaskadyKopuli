@@ -1,43 +1,48 @@
-# Funkcja do obliczenia bootstrapu dla odchylenia standardowego
-bootstrap_sd <- function(data, num_samples) {
-  bootstrap_samples <- replicate(num_samples, sample(data, length(data), replace = TRUE))
-  sds <- apply(bootstrap_samples, 2, sd)
+# Funkcja do obliczania stabilności statystyk (średnia, wariancja, odchylenie standardowe)
+calculate_stability <- function(data, num_samples) {
+  # Inicjalizacja wektorów do przechowywania wyników
+  means <- numeric(num_samples)
+  variances <- numeric(num_samples)
+  sds <- numeric(num_samples)
   
-  # Obliczanie przedziałów ufności
-  ci_lower <- quantile(sds, 0.025)
-  ci_upper <- quantile(sds, 0.975)
+  # Losowanie prób bez powtórzeń i obliczanie statystyk
+  for (i in 1:num_samples) {
+    sample_data <- sample(data, length(data), replace = FALSE)  # Losowanie bez powtórzeń
+    means[i] <- mean(sample_data)
+    variances[i] <- var(sample_data)
+    sds[i] <- sd(sample_data)
+  }
   
-  return(list(sds = sds, ci_lower = ci_lower, ci_upper = ci_upper))
+  # Obliczanie przedziałów ufności (np. 95%)
+  ci_mean <- quantile(means, c(0.025, 0.975))
+  ci_variance <- quantile(variances, c(0.025, 0.975))
+  ci_sd <- quantile(sds, c(0.025, 0.975))
+  
+  # Zwracanie wyników
+  return(list(mean = means, variance = variances, sd = sds, 
+              ci_mean = ci_mean, ci_variance = ci_variance, ci_sd = ci_sd))
 }
 
-# Przeprowadzenie bootstrapu dla odchylenia standardowego
+# Przykład dla danych simulations_data
 num_samples <- 1000
-bootstrap_sd_result <- bootstrap_sd(simulations_data, num_samples)
+stability_results <- calculate_stability(simulations_data, num_samples)
 
-# Teraz możemy wykorzystać bootstrap_sd_result do rysowania przedziałów ufności na wykresie.
+# Wyświetlenie wyników
+cat("Przedziały ufności dla średniej: ", stability_results$ci_mean, "\n")
+cat("Przedziały ufności dla wariancji: ", stability_results$ci_variance, "\n")
+cat("Przedziały ufności dla odchylenia standardowego: ", stability_results$ci_sd, "\n")
 
-
-
-# Wykresy
+# Rysowanie wykresów
 par(mfrow = c(1, 3))  # Trzy wykresy obok siebie
 
-# Wykres 1: Stabilność średniej
-plot(1:steps, stability_incremental$mean_values, type = "l", col = "blue", 
-     xlab = "Liczba symulacji", ylab = "Średnia", main = "Stabilność średniej")
-abline(h = mean_value, col = "red", lty = 2)  # Linia pozioma dla średniej
-abline(h = bootstrap_mean$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
-abline(h = bootstrap_mean$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
+# Wykres dla średniej
+hist(stability_results$mean, col = "lightblue", main = "Rozkład średnich", xlab = "Średnia", ylab = "Częstość")
+abline(v = mean(simulations_data), col = "red", lwd = 2)
 
-# Wykres 2: Stabilność kwantyla 0.995
-plot(1:steps, stability_incremental$quantile_values, type = "l", col = "red", 
-     xlab = "Liczba symulacji", ylab = "Kwantyl 0.995", main = "Stabilność kwantyla 0.995")
-abline(h = quantile_995, col = "blue", lty = 2)  # Linia pozioma dla kwantyla 0.995
-abline(h = bootstrap_quantile_995$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
-abline(h = bootstrap_quantile_995$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
+# Wykres dla wariancji
+hist(stability_results$variance, col = "lightgreen", main = "Rozkład wariancji", xlab = "Wariancja", ylab = "Częstość")
+abline(v = var(simulations_data), col = "red", lwd = 2)
 
-# Wykres 3: Stabilność odchylenia standardowego
-plot(1:steps, stability_sd, type = "l", col = "green", 
-     xlab = "Liczba symulacji", ylab = "Odchylenie standardowe", main = "Stabilność odchylenia standardowego")
-abline(h = sd_value, col = "red", lty = 2)  # Linia pozioma dla odchylenia standardowego
-abline(h = bootstrap_sd_result$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
-abline(h = bootstrap_sd_result$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
+# Wykres dla odchylenia standardowego
+hist(stability_results$sd, col = "lightcoral", main = "Rozkład odchylenia standardowego", xlab = "Odchylenie standardowe", ylab = "Częstość")
+abline(v = sd(simulations_data), col = "red", lwd = 2)
