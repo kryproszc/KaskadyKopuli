@@ -1,23 +1,23 @@
-# Funkcja do obliczania stabilności odchylenia standardowego
-compute_stability_sd <- function(data, steps) {
-  sds <- sapply(1:steps, function(x) sd(data[1:x]))
-  return(sds)
-}
-
-# Obliczenia dla odchylenia standardowego
-stability_sd <- compute_stability_sd(simulations_data, steps)
-
-# Rysowanie wykresów (dodajemy odchylenie standardowe jako trzeci wykres)
+# Wykresy
 par(mfrow = c(1, 3))  # Trzy wykresy obok siebie
 
 # Wykres 1: Stabilność średniej
 plot(1:steps, stability_incremental$mean_values, type = "l", col = "blue", 
      xlab = "Liczba symulacji", ylab = "Średnia", main = "Stabilność średniej")
+abline(h = mean_value, col = "red", lty = 2)  # Linia pozioma dla średniej
+abline(h = bootstrap_mean$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
+abline(h = bootstrap_mean$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
 
 # Wykres 2: Stabilność kwantyla 0.995
 plot(1:steps, stability_incremental$quantile_values, type = "l", col = "red", 
      xlab = "Liczba symulacji", ylab = "Kwantyl 0.995", main = "Stabilność kwantyla 0.995")
+abline(h = quantile_995, col = "blue", lty = 2)  # Linia pozioma dla kwantyla 0.995
+abline(h = bootstrap_quantile_995$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
+abline(h = bootstrap_quantile_995$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
 
 # Wykres 3: Stabilność odchylenia standardowego
 plot(1:steps, stability_sd, type = "l", col = "green", 
      xlab = "Liczba symulacji", ylab = "Odchylenie standardowe", main = "Stabilność odchylenia standardowego")
+abline(h = sd_value, col = "red", lty = 2)  # Linia pozioma dla odchylenia standardowego
+abline(h = bootstrap_sd$ci_lower, col = "green", lty = 3)  # Przedział ufności dolny
+abline(h = bootstrap_sd$ci_upper, col = "green", lty = 3)  # Przedział ufności górny
