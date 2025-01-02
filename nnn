@@ -1,10 +1,16 @@
 # Ustawienie ziarna losowości
 set.seed(42)
 
-# Tworzenie przykładowych danych symulacyjnych (20 000 próbek)
-simulations_data <- rnorm(20000, mean = 50, sd = 10)
+# Załaduj dane symulacyjne (np. simulations_data) - tu wstaw swoje dane
+simulations_data <- rnorm(1000,0,1)
 
-# Funkcja do przeprowadzania bootstrapu
+# Funkcja do obliczania średniej z rosnącej liczby symulacji
+compute_convergence <- function(data, steps) {
+  means <- sapply(1:steps, function(x) mean(data[1:x]))
+  return(means)
+}
+
+# Funkcja bootstrapowa
 bootstrap <- function(data, num_samples, statistic, ci_percentile = 95) {
   bootstrap_samples <- replicate(num_samples, sample(data, length(data), replace = TRUE))
   statistics <- apply(bootstrap_samples, 2, statistic)
@@ -18,16 +24,31 @@ bootstrap <- function(data, num_samples, statistic, ci_percentile = 95) {
   return(list(statistics = statistics, ci_lower = ci_lower, ci_upper = ci_upper))
 }
 
-# Przeprowadzenie bootstrapu dla średniej
+# Liczba kroków do analizy konwergencji
+steps <- length(simulations_data)
+
+# Obliczamy średnią na rosnącej liczbie symulacji
+convergence_means <- compute_convergence(simulations_data, steps)
+
+# Bootstrap dla średniej
 num_samples <- 1000
 bootstrap_results <- bootstrap(simulations_data, num_samples, mean)
 
-# Wyniki: przedział ufności dla średniej
-bootstrap_results$ci_lower
-bootstrap_results$ci_upper
+# Rysowanie wykresu z poprawionym rozmiarem legendy i tekstu
+# Rysowanie wykresu z poprawionym rozmiarem legendy i tekstu
+par(mfrow=c(1,2), mar=c(4, 4, 3, 2))  # Ustawienie marginesów i dwóch wykresów obok siebie
 
-# Wizualizacja rozkładu bootstrapowych średnich
+# Wykres 1: Konwergencja średniej
+plot(1:steps, convergence_means, type = "l", col = "blue", 
+     xlab = "Liczba symulacji", ylab = "Średnia",
+     main = "Analiza konwergencji", cex.main = 1, cex.lab = 0.9, cex.axis = 0.8)
+
+# Wykres 2: Rozkład bootstrapowy średnich
 hist(bootstrap_results$statistics, breaks = 30, col = 'skyblue', border = 'black', 
-     main = 'Bootstrap Mean Distribution', xlab = 'Średnia z próbek')
+     main = 'Bootstrap Mean Distribution', xlab = 'Średnia z próbek', cex.main = 1, cex.lab = 0.9, cex.axis = 0.8)
+
+# Dodajemy linię dla średniej z całego zbioru
 abline(v = mean(simulations_data), col = 'red', lwd = 2, lty = 2)
-legend("topright", legend = c('Średnia z całego zbioru'), col = 'red', lty = 2, lwd = 2)
+
+# Zmniejszamy rozmiar czcionki w legendzie
+legend("topright", legend = c('Średnia z całego zbioru'), col = 'red', lty = 2, lwd = 2, cex = 0.8) # Zmniejszamy rozmiar czcionki
