@@ -1,11 +1,7 @@
-library(ggplot2)
-library(openxlsx)
-
 # Funkcja do obliczania średnich w oknach
 calculate_moving_average <- function(data, window_size) {
   global_mean <- mean(data, na.rm = TRUE)
   window_means <- numeric(length = length(data) %/% window_size)
-  
   for (i in 1:length(window_means)) {
     window_means[i] <- mean(data[1:(i * window_size)], na.rm = TRUE)
   }
@@ -30,117 +26,137 @@ calculate_var <- function(data, window_size, quantile) {
   return(var_values)
 }
 
-# Funkcja do generowania wykresów dla średniej, odchylenia standardowego, VaR i SCR
-plot_moving_averages <- function(data, window_size, quantile_value, title, insurer) {
+# Funkcja do generowania wykresów
+plot_moving_averages <- function(data, window_size, stat_type, quantile_value) {
   stats_df <- data.frame(Liczba_symulacji = seq(window_size, length(data), by = window_size))
-  
-  # Obliczanie średniej
-  mean_stats <- calculate_moving_average(data, window_size)
-  stats_df$Mean <- mean_stats$window_means
-  global_mean <- mean_stats$global_mean
-  
-  # Obliczanie odchylenia standardowego
-  sd_stats <- calculate_standard_deviation(data, window_size)
-  global_sd <- sd(data, na.rm = TRUE)
-  
-  # Obliczanie Value at Risk (VaR)
-  var_stats <- calculate_var(data, window_size, quantile_value)
-  global_var <- quantile(data, probs = quantile_value, na.rm = TRUE)
-  
-  # Tworzymy wykresy
-  p1 <- ggplot(stats_df, aes(x = Liczba_symulacji)) +
-    geom_line(aes(y = Mean), color = "blue", linetype = "solid", size = 0.7) +  # Cieńsza linia
-    geom_hline(yintercept = global_mean, color = "red", linetype = "dashed", size = 0.7) +  # Czerwona linia przerywana
-    labs(title = paste("Stabilność średnia -", title), x = "Liczba symulacji (okna)", y = "Średnia") +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  p2 <- ggplot(stats_df, aes(x = Liczba_symulacji)) +
-    geom_line(aes(y = var_stats), color = "blue", linetype = "solid", size = 0.7) +  # Cieńsza linia
-    geom_hline(yintercept = global_var, color = "red", linetype = "dashed", size = 0.7) +  # Czerwona linia przerywana
-    labs(title = paste("Stabilność kwantyla 0.995 -", title), x = "Liczba symulacji (okna)", y = "VaR") +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  p3 <- ggplot(stats_df, aes(x = Liczba_symulacji)) +
-    geom_line(aes(y = sd_stats), color = "blue", linetype = "solid", size = 0.7) +  # Cieńsza linia
-    geom_hline(yintercept = global_sd, color = "red", linetype = "dashed", size = 0.7) +  # Czerwona linia przerywana
-    labs(title = paste("Stabilność odchylenia standardowego -", title), x = "Liczba symulacji (okna)", y = "Odchylenie standardowe") +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  # Dodatkowy wykres SCR
-  p4 <- ggplot(stats_df, aes(x = Liczba_symulacji)) +
-    geom_line(aes(y = var_stats), color = "blue", linetype = "solid", size = 0.7) +  # Cieńsza linia VaR
-    geom_line(aes(y = Mean), color = "green", linetype = "solid", size = 0.7) +  # Cieńsza linia średniej
-    geom_hline(yintercept = global_mean, color = "red", linetype = "dashed", size = 0.7) +  # Czerwona linia przerywana (SCR)
-    labs(title = paste("SCR: VaR + Średnia -", title), x = "Liczba symulacji (okna)", y = "SCR") +
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  # Zapisz wykresy do plików PNG w folderze roboczym
-  ggsave(paste0("plot_", insurer, "_", title, "_mean.png"), plot = p1, path = getwd())
-  ggsave(paste0("plot_", insurer, "_", title, "_var.png"), plot = p2, path = getwd())
-  ggsave(paste0("plot_", insurer, "_", title, "_sd.png"), plot = p3, path = getwd())
-  ggsave(paste0("plot_", insurer, "_", title, "_SCR.png"), plot = p4, path = getwd())  # Zapisujemy SCR
-  
-  return(list(p1, p2, p3, p4))
-}
-
-# Funkcja do zapisywania wykresów do Excela
-save_plots_to_excel <- function(loaded_data, window_size, quantile_value, file_name) {
-  wb <- createWorkbook()
-  
-  for (insurer in names(loaded_data)) {
-    print(insurer)
-    addWorksheet(wb, sheetName = insurer)
-    
-    # Zmienna do śledzenia wiersza, w którym zaczniemy dodawać wykresy
-    row_num <- 1
-    
-    # Generujemy wykresy dla każdej z 4 kolumn
-    for (col_name in c("Brutto", "Netto", "Brutto_Katastoficzny", "Netto_Katastoficzny")) {
-      
-      # Sprawdź, czy dana kolumna istnieje w danych
-      if (col_name %in% colnames(loaded_data[[insurer]])) {
-        # Pobieramy dane
-        data <- loaded_data[[insurer]][[col_name]]
-        
-        # Generujemy wykres
-        plots <- plot_moving_averages(data, window_size, quantile_value, col_name, insurer)
-        
-        # Dodajemy wykresy do arkusza w odpowiednich miejscach
-        insertImage(wb, sheet = insurer, file = paste0(getwd(), "/plot_", insurer, "_", col_name, "_mean.png"),
-                    startRow = row_num, startCol = 1)
-        insertImage(wb, sheet = insurer, file = paste0(getwd(), "/plot_", insurer, "_", col_name, "_var.png"),
-                    startRow = row_num + 15, startCol = 1)
-        insertImage(wb, sheet = insurer, file = paste0(getwd(), "/plot_", insurer, "_", col_name, "_sd.png"),
-                    startRow = row_num + 30, startCol = 1)
-        insertImage(wb, sheet = insurer, file = paste0(getwd(), "/plot_", insurer, "_", col_name, "_SCR.png"),
-                    startRow = row_num + 45, startCol = 1)  # Zapisz wykres SCR
-        
-        # Zwiększamy numer wiersza, aby umieścić następny zestaw wykresów poniżej
-        row_num <- row_num + 60  # Zmienna 60 to odległość, która gwarantuje, że wykresy się nie nakładają
-      }
-    }
+  if (stat_type == "mean") {
+    stats <- calculate_moving_average(data, window_size)
+    stats_df$Moving_Average <- stats$window_means
+    global_mean <- stats$global_mean
+    p <- ggplot(stats_df, aes(x = Liczba_symulacji, y = Moving_Average)) +
+      geom_line(color = "blue") +
+      geom_hline(yintercept = global_mean, color = "red", linetype = "dashed") +
+      labs(title = "mean w oknach", x = "Liczba symulacji (okna)", y = "mean") +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5))
   }
-  
-  # Zapisz plik Excel
-  saveWorkbook(wb, file_name, overwrite = TRUE)
+  if (stat_type == "sd") {
+    window_sd <- calculate_standard_deviation(data, window_size)
+    global_sd <- sd(data, na.rm = TRUE)
+    stats_df$Moving_Average <- window_sd
+    p <- ggplot(stats_df, aes(x = Liczba_symulacji, y = Moving_Average)) +
+      geom_line(color = "green") +
+      geom_hline(yintercept = global_sd, color = "orange", linetype = "dashed") +
+      labs(title = "sd w oknach", x = "Liczba symulacji (okna)", y = "Standard Deviation") +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5))
+  }
+  if (stat_type == "var") {
+    var_values <- calculate_var(data, window_size, quantile_value)
+    global_var <- quantile(data, probs = quantile_value, na.rm = TRUE)
+    stats_df$Moving_Average <- var_values
+    p <- ggplot(stats_df, aes(x = Liczba_symulacji, y = Moving_Average)) +
+      geom_line(color = "purple") +
+      geom_hline(yintercept = global_var, color = "yellow", linetype = "dashed") +
+      labs(title = paste("VaR w oknach (quantile:", quantile_value, ")"), x = "Liczba symulacji (okna)", y = "VaR") +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5))
+  }
+  return(p)
 }
 
-# Przykładowe dane dla ubezpieczycieli
-set.seed(123)  # Ustawienie ziarna generatora liczb losowych dla powtarzalności wyników
-
-loaded_data <- list(
-  AXA = data.frame(Brutto = 300*rnorm(1000), Netto = 300*rnorm(1000)),
-  PZU = data.frame(Brutto = 500*rnorm(1000), Netto = 500*rnorm(1000)),
-  UNIQA = data.frame(Brutto_Katastoficzny = 1009*rnorm(1000), Netto_Katastoficzny = 1009*rnorm(1000))
+# UI aplikacji Shiny
+ui <- fluidPage(
+  titlePanel("Ocena Symulacji"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      uiOutput("insurer_selector"),  # Dynamiczny wybór ubezpieczyciela
+      uiOutput("column_selector"),   # Dynamiczny wybór kolumny do analizy
+      selectInput("window_size", "Wybierz wielkość okna:",
+                  choices = c(10, 50, 100, 150), selected = 10),
+      numericInput("quantile", "Wybierz kwantyl (%):",
+                   value = 95, min = 0, max = 100, step = 1),
+      actionButton("start_button", "Start"), # Przycisk Start
+      br()
+    ),
+    
+    mainPanel(
+      tabsetPanel(
+        # Główna zakładka "Ocena Symulacji"
+        tabPanel("Ocena Symulacji", 
+                 tabsetPanel(
+                   tabPanel("Mean", plotOutput("moving_avg_plot")),
+                   tabPanel("Standard Deviation", plotOutput("sd_plot")),
+                   tabPanel("VaR", plotOutput("var_plot"))
+                 )),
+        # Główna zakładka "OV"
+        tabPanel("OV", 
+                 h3("Sekcja OV"), 
+                 p("Tutaj może być inna sekcja z analizą lub wykresami."))  # Druga zakładka "OV"
+      )
+    )
+  )
 )
 
-# Okno (window_size) do analizy
-window_size <- 10
-quantile_value <- 0.995  # Kwantyl 0.995 dla VaR
+# Server aplikacji Shiny
+server <- function(input, output, session) {
+  
+  # Załaduj dane ubezpieczycieli
+#  loaded_data <- list(
+ #   AXA = data.frame(Brutto = 300*rnorm(1000), Netto = 300*rnorm(1000)),
+#    PZU = data.frame(Brutto = 500*rnorm(1000), Netto = 500*rnorm(1000)),
+#    UNIQA = data.frame(Brutto_Katastoficzny = 1009*rnorm(1000), Netto_Katastoficzny = 1009*rnorm(1000))
+#  )
+  
+  # Dynamiczne generowanie wyboru ubezpieczyciela
+  output$insurer_selector <- renderUI({
+    selectInput("insurer", "Wybierz ubezpieczyciela:",
+                choices = names(loaded_data))  # Wybór ubezpieczycieli z 'loaded_data'
+  })
+  
+  # Dynamiczne generowanie wyboru kolumny w zależności od wybranego ubezpieczyciela
+  output$column_selector <- renderUI({
+    selected_insurer <- input$insurer
+    colnames <- colnames(loaded_data[[selected_insurer]])
+    selectInput("column", "Wybierz kolumnę do analizy:", choices = colnames)
+  })
+  
+  # Przechowywanie danych w reaktywnym obiekcie
+  observeEvent(input$start_button, {
+    selected_insurer <- input$insurer
+    selected_column <- input$column
+    # Pobieramy dane z wybranej kolumny
+    data <- loaded_data[[selected_insurer]][[selected_column]]
+    
+    # Sprawdzamy, czy dane są poprawne przed przekazaniem do funkcji
+    if (length(data) == 0 || all(is.na(data))) {
+      showNotification("Brak danych w wybranej kolumnie.", type = "error")
+      return(NULL)
+    }
+    
+    window_size <- as.numeric(input$window_size)
+    quantile_value <- as.numeric(input$quantile) / 100  # Przeliczamy na proporcję
+    
+    if (is.na(window_size) || window_size <= 0) {
+      showNotification("Proszę wybrać prawidłową wielkość okna.", type = "error")
+      return(NULL)
+    }
+    
+    output$moving_avg_plot <- renderPlot({
+      plot_moving_averages(data, window_size, stat_type = "mean", quantile_value = quantile_value)
+    })
+    
+    output$sd_plot <- renderPlot({
+      plot_moving_averages(data, window_size, stat_type = "sd", quantile_value = quantile_value)
+    })
+    
+    output$var_plot <- renderPlot({
+      plot_moving_averages(data, window_size, stat_type = "var", quantile_value = quantile_value)
+    })
+  })
+}
 
-# Zapisz wyniki do pliku Excel
-save_plots_to_excel(loaded_data, window_size, quantile_value, "wyniki_oceny_symulacji.xlsx")
+# Uruchomienie aplikacji
+shinyApp(ui = ui, server = server)
+
