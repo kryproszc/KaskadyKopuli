@@ -1,1 +1,129 @@
-Podczas kontroli ustalono, że przepływ ALAE_RES(HRG,i,w), uwzględniony w obliczeniu najlepszego oszacowania brutto na 31 marca 2024 roku, reprezentuje przyszłe przepływy pieniężne z tytułu wypłat bezpośrednich kosztów likwidacji szkód, z wyłączeniem rent. Na podstawie pliku „RESQ_ALAE_S2_2024.Q1.xlsx” ustalono, że proces obliczenia wartości przepływu ALAE_RES(HRG,i,w) na 31 marca 2024 roku dla jednorodnych grup ryzyka dotyczących ubezpieczeń bezpośrednich odbył się w systemie ResQ, a szczegółowy przebieg tego procesu został opisany w dokumentacji.
+library(ggplot2)
+library(openxlsx)
+
+# Funkcja do obliczania średnich w oknach
+calculate_moving_average <- function(data, window_size) {
+  global_mean <- mean(data, na.rm = TRUE)
+  window_means <- numeric(length = length(data) %/% window_size)
+  
+  for (i in 1:length(window_means)) {
+    window_means[i] <- mean(data[1:(i * window_size)], na.rm = TRUE)
+  }
+  list(window_means = window_means, global_mean = global_mean)
+}
+
+# Funkcja do obliczania odchylenia standardowego w oknach
+calculate_standard_deviation <- function(data, window_size) {
+  window_sd <- numeric(length = length(data) %/% window_size)
+  for (i in 1:length(window_sd)) {
+    window_sd[i] <- sd(data[1:(i * window_size)], na.rm = TRUE)
+  }
+  return(window_sd)
+}
+
+# Funkcja do obliczania kwantyla (Value at Risk)
+calculate_var <- function(data, window_size, quantile) {
+  var_values <- numeric(length = length(data) %/% window_size)
+  for (i in 1:length(var_values)) {
+    var_values[i] <- quantile(data[1:(i * window_size)], probs = quantile, na.rm = TRUE)
+  }
+  return(var_values)
+}
+
+# Funkcja do generowania wykresów dla średniej, odchylenia standardowego i VaR
+plot_moving_averages <- function(data, window_size, quantile_value, title) {
+  stats_df <- data.frame(Liczba_symulacji = seq(window_size, length(data), by = window_size))
+  
+  # Obliczanie średniej
+  mean_stats <- calculate_moving_average(data, window_size)
+  stats_df$Mean <- mean_stats$window_means
+  global_mean <- mean_stats$global_mean
+  
+  # Obliczanie odchylenia standardowego
+  sd_stats <- calculate_standard_deviation(data, window_size)
+  global_sd <- sd(data, na.rm = TRUE)
+  
+  # Obliczanie Value at Risk (VaR)
+  var_stats <- calculate_var(data, window_size, quantile_value)
+  global_var <- quantile(data, probs = quantile_value, na.rm = TRUE)
+  
+  # Tworzymy wykresy
+  p1 <- ggplot(stats_df, aes(x = Liczba_symulacji)) +
+    geom_line(aes(y = Mean), color = "blue", linetype = "solid", size = 0.7) +  # Cieńsza linia
+    geom_hline(yintercept = global_mean, color = "red", linetype = "dashed", size = 0.7) +  # Czerwona linia przerywana
+    labs(title = paste("Stabilność średnia -", title), x = "Liczba symulacji (okna)", y = "Średnia") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  p2 <- ggplot(stats_df, aes(x = Liczba_symulacji)) +
+    geom_line(aes(y = var_stats), color = "blue", linetype = "solid", size = 0.7) +  # Cieńsza linia
+    geom_hline(yintercept = global_var, color = "red", linetype = "dashed", size = 0.7) +  # Czerwona linia przerywana
+    labs(title = paste("Stabilność kwantyla 0.995 -", title), x = "Liczba symulacji (okna)", y = "VaR") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  p3 <- ggplot(stats_df, aes(x = Liczba_symulacji)) +
+    geom_line(aes(y = sd_stats), color = "blue", linetype = "solid", size = 0.7) +  # Cieńsza linia
+    geom_hline(yintercept = global_sd, color = "red", linetype = "dashed", size = 0.7) +  # Czerwona linia przerywana
+    labs(title = paste("Stabilność odchylenia standardowego -", title), x = "Liczba symulacji (okna)", y = "Odchylenie standardowe") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  # Zapisz wykresy do plików PNG w folderze roboczym
+  ggsave(paste0("plot_", title, "_mean.png"), plot = p1, path = getwd())
+  ggsave(paste0("plot_", title, "_var.png"), plot = p2, path = getwd())
+  ggsave(paste0("plot_", title, "_sd.png"), plot = p3, path = getwd())
+  
+  return(list(p1, p2, p3))
+}
+
+# Funkcja do zapisywania wykresów do Excela
+save_plots_to_excel <- function(loaded_data, window_size, quantile_value, file_name) {
+  wb <- createWorkbook()
+  
+  for (insurer in names(loaded_data)) {
+    addWorksheet(wb, sheetName = insurer)
+    
+    # Zmienna do śledzenia wiersza, w którym zaczniemy dodawać wykresy
+    row_num <- 1
+    
+    # Generujemy wykresy dla każdej z 4 kolumn
+    for (col_name in c("Brutto", "Netto", "Brutto_Katastoficzny", "Netto_Katastoficzny")) {
+      
+      # Sprawdź, czy dana kolumna istnieje w danych
+      if (col_name %in% colnames(loaded_data[[insurer]])) {
+        # Pobieramy dane
+        data <- loaded_data[[insurer]][[col_name]]
+        
+        # Generujemy wykres
+        plots <- plot_moving_averages(data, window_size, quantile_value, col_name)
+        
+        # Dodajemy wykresy do arkusza w odpowiednich miejscach
+        insertImage(wb, sheet = insurer, file = paste0(getwd(), "/plot_", col_name, "_mean.png"),
+                    startRow = row_num, startCol = 1)
+        insertImage(wb, sheet = insurer, file = paste0(getwd(), "/plot_", col_name, "_var.png"),
+                    startRow = row_num + 15, startCol = 1)
+        insertImage(wb, sheet = insurer, file = paste0(getwd(), "/plot_", col_name, "_sd.png"),
+                    startRow = row_num + 30, startCol = 1)
+        
+        # Zwiększamy numer wiersza, aby umieścić następny zestaw wykresów poniżej
+        row_num <- row_num + 50  # Zmienna 50 to odległość, która gwarantuje, że wykresy się nie nakładają
+      }
+    }
+  }
+  
+  # Zapisz plik Excel
+  saveWorkbook(wb, file_name, overwrite = TRUE)
+}
+
+# Przykładowe dane dla ubezpieczycieli
+set.seed(123)  # Ustawienie ziarna generatora liczb losowych dla powtarzalności wyników
+
+
+
+# Okno (window_size) do analizy
+window_size <- 10
+quantile_value <- 0.995  # Kwantyl 0.995 dla VaR
+
+# Zapisz wyniki do pliku Excel
+save_plots_to_excel(loaded_data, window_size, quantile_value, "wyniki_oceny_symulacji.xlsx")
