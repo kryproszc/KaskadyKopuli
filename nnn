@@ -1,99 +1,55 @@
-# Funkcja do obliczania średnich w oknach
-calculate_moving_average <- function(data, window_size) {
-  global_mean <- mean(data, na.rm = TRUE)
-  window_means <- numeric(length = length(data) %/% window_size)
-  for (i in 1:length(window_means)) {
-    window_means[i] <- mean(data[1:(i * window_size)], na.rm = TRUE)
-  }
-  list(window_means = window_means, global_mean = global_mean)
+library(shiny)
+library(DT)  # Do obsługi dynamicznych tabel
+
+# Funkcja do obliczania kwantyli dla danych
+calculate_quantiles <- function(data) {
+  quantile_values <- seq(0, 1, by = 0.1)
+  quantiles <- sapply(quantile_values, function(q) quantile(data, probs = q, na.rm = TRUE))
+  return(quantiles)
 }
 
-# Funkcja do obliczania odchylenia standardowego w oknach
-calculate_standard_deviation <- function(data, window_size) {
-  window_sd <- numeric(length = length(data) %/% window_size)
-  for (i in 1:length(window_sd)) {
-    window_sd[i] <- sd(data[1:(i * window_size)], na.rm = TRUE)
-  }
-  return(window_sd)
-}
+# Załaduj dane ubezpieczycieli
+loaded_data <- list(
+  AXA = data.frame(Brutto = 300*rnorm(1000), Netto = 300*rnorm(1000)),
+  PZU = data.frame(Brutto = 500*rnorm(1000), Netto = 500*rnorm(1000))
+)
 
-# Funkcja do obliczania kwantyla (Value at Risk)
-calculate_var <- function(data, window_size, quantile) {
-  var_values <- numeric(length = length(data) %/% window_size)
-  for (i in 1:length(var_values)) {
-    var_values[i] <- quantile(data[1:(i * window_size)], probs = quantile, na.rm = TRUE)
-  }
-  return(var_values)
-}
+# Załaduj dane porównania SF/IM
+loaded_data_porownanie <- data.frame(
+  Ubezpieczyciel = c("AXA", "PZU"),
+  Brutto = c(300, 500),
+  Netto = c(300, 500)
+)
 
-# Funkcja do generowania wykresów
-plot_moving_averages <- function(data, window_size, stat_type, quantile_value) {
-  stats_df <- data.frame(Liczba_symulacji = seq(window_size, length(data), by = window_size))
-  if (stat_type == "mean") {
-    stats <- calculate_moving_average(data, window_size)
-    stats_df$Moving_Average <- stats$window_means
-    global_mean <- stats$global_mean
-    p <- ggplot(stats_df, aes(x = Liczba_symulacji, y = Moving_Average)) +
-      geom_line(color = "blue") +
-      geom_hline(yintercept = global_mean, color = "red", linetype = "dashed") +
-      labs(title = "mean w oknach", x = "Liczba symulacji (okna)", y = "mean") +
-      theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5))
-  }
-  if (stat_type == "sd") {
-    window_sd <- calculate_standard_deviation(data, window_size)
-    global_sd <- sd(data, na.rm = TRUE)
-    stats_df$Moving_Average <- window_sd
-    p <- ggplot(stats_df, aes(x = Liczba_symulacji, y = Moving_Average)) +
-      geom_line(color = "green") +
-      geom_hline(yintercept = global_sd, color = "orange", linetype = "dashed") +
-      labs(title = "sd w oknach", x = "Liczba symulacji (okna)", y = "Standard Deviation") +
-      theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5))
-  }
-  if (stat_type == "var") {
-    var_values <- calculate_var(data, window_size, quantile_value)
-    global_var <- quantile(data, probs = quantile_value, na.rm = TRUE)
-    stats_df$Moving_Average <- var_values
-    p <- ggplot(stats_df, aes(x = Liczba_symulacji, y = Moving_Average)) +
-      geom_line(color = "purple") +
-      geom_hline(yintercept = global_var, color = "yellow", linetype = "dashed") +
-      labs(title = paste("VaR w oknach (quantile:", quantile_value, ")"), x = "Liczba symulacji (okna)", y = "VaR") +
-      theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5))
-  }
-  return(p)
+# Funkcja do formatowania liczb jako całkowite
+format_numbers <- function(x) {
+  return(formatC(round(x), format = "f", big.mark = " "))  # Zaokrąglamy liczbę do całkowitej przed formatowaniem
 }
 
 # UI aplikacji Shiny
 ui <- fluidPage(
-  titlePanel("Ocena Symulacji"),
+  titlePanel("Tabela Kwantyli - Ubezpieczyciele"),
   
   sidebarLayout(
     sidebarPanel(
-      uiOutput("insurer_selector"),  # Dynamiczny wybór ubezpieczyciela
       uiOutput("column_selector"),   # Dynamiczny wybór kolumny do analizy
-      selectInput("window_size", "Wybierz wielkość okna:",
-                  choices = c(10, 50, 100, 150), selected = 10),
-      numericInput("quantile", "Wybierz kwantyl (%):",
-                   value = 95, min = 0, max = 100, step = 1),
-      actionButton("start_button", "Start"), # Przycisk Start
-      br()
+      actionButton("generate_table", "Generuj Tabelę Kwantyli") # Przycisk generowania tabeli
     ),
     
     mainPanel(
       tabsetPanel(
-        # Główna zakładka "Ocena Symulacji"
-        tabPanel("Ocena Symulacji", 
-                 tabsetPanel(
-                   tabPanel("Mean", plotOutput("moving_avg_plot")),
-                   tabPanel("Standard Deviation", plotOutput("sd_plot")),
-                   tabPanel("VaR", plotOutput("var_plot"))
-                 )),
-        # Główna zakładka "OV"
-        tabPanel("OV", 
-                 h3("Sekcja OV"), 
-                 p("Tutaj może być inna sekcja z analizą lub wykresami."))  # Druga zakładka "OV"
+        # Główna zakładka "Tabela Kwantyli"
+        tabPanel("Tabela Kwantyli", 
+                 DTOutput("quantile_table")),  # Dynamiczna tabela kwantyli
+        
+        # Zakładka "Porównanie SF/IM"
+        tabPanel("Porównanie SF/IM", 
+                 h3("Porównanie SF/IM"), 
+                 p("Tutaj możesz dodać wykresy lub inne dane dotyczące porównania SF/IM.")),  # Zakładka porównawcza
+        
+        # Nowa zakładka do obliczania różnic
+        tabPanel("Różnice Kwantyl 0.995 - Średnia", 
+                 DTOutput("diff_table"))  # Tabela z różnicami
       )
     )
   )
@@ -102,61 +58,77 @@ ui <- fluidPage(
 # Server aplikacji Shiny
 server <- function(input, output, session) {
   
-  # Załaduj dane ubezpieczycieli
-#  loaded_data <- list(
- #   AXA = data.frame(Brutto = 300*rnorm(1000), Netto = 300*rnorm(1000)),
-#    PZU = data.frame(Brutto = 500*rnorm(1000), Netto = 500*rnorm(1000)),
-#    UNIQA = data.frame(Brutto_Katastoficzny = 1009*rnorm(1000), Netto_Katastoficzny = 1009*rnorm(1000))
-#  )
-  
-  # Dynamiczne generowanie wyboru ubezpieczyciela
-  output$insurer_selector <- renderUI({
-    selectInput("insurer", "Wybierz ubezpieczyciela:",
-                choices = names(loaded_data))  # Wybór ubezpieczycieli z 'loaded_data'
-  })
-  
   # Dynamiczne generowanie wyboru kolumny w zależności od wybranego ubezpieczyciela
   output$column_selector <- renderUI({
-    selected_insurer <- input$insurer
-    colnames <- colnames(loaded_data[[selected_insurer]])
+    # Listowanie wszystkich dostępnych kolumn dla ubezpieczycieli
+    colnames <- unique(unlist(lapply(loaded_data, colnames)))
     selectInput("column", "Wybierz kolumnę do analizy:", choices = colnames)
   })
   
-  # Przechowywanie danych w reaktywnym obiekcie
-  observeEvent(input$start_button, {
-    selected_insurer <- input$insurer
+  # Funkcja generująca tabelę kwantyli
+  observeEvent(input$generate_table, {
     selected_column <- input$column
-    # Pobieramy dane z wybranej kolumny
-    data <- loaded_data[[selected_insurer]][[selected_column]]
     
-    # Sprawdzamy, czy dane są poprawne przed przekazaniem do funkcji
-    if (length(data) == 0 || all(is.na(data))) {
-      showNotification("Brak danych w wybranej kolumnie.", type = "error")
-      return(NULL)
+    # Przechowujemy kwantyle dla wszystkich ubezpieczycieli
+    quantiles_data <- data.frame(Ubezpieczyciel = character(), stringsAsFactors = FALSE)
+    
+    for (insurer in names(loaded_data)) {
+      # Pobieramy dane z wybranej kolumny dla każdego ubezpieczyciela
+      data <- loaded_data[[insurer]][[selected_column]]
+      
+      # Obliczamy kwantyle
+      quantiles <- calculate_quantiles(data)
+      
+      # Dodajemy kwantyle do tabeli
+      quantiles_data <- rbind(quantiles_data, data.frame(Ubezpieczyciel = insurer, t(quantiles)))
     }
     
-    window_size <- as.numeric(input$window_size)
-    quantile_value <- as.numeric(input$quantile) / 100  # Przeliczamy na proporcję
+    # Ustawiamy odpowiednie nazwy kolumn
+    colnames(quantiles_data)[2:ncol(quantiles_data)] <- paste0("Q", seq(0, 1, by = 0.1))
     
-    if (is.na(window_size) || window_size <= 0) {
-      showNotification("Proszę wybrać prawidłową wielkość okna.", type = "error")
-      return(NULL)
+    # Formatujemy wartości liczbowe w tabeli
+    quantiles_data[2:ncol(quantiles_data)] <- lapply(quantiles_data[2:ncol(quantiles_data)], function(x) format_numbers(as.numeric(x)))
+    
+    # Wyświetlanie tabeli
+    output$quantile_table <- renderDT({
+      datatable(quantiles_data, options = list(pageLength = 10))
+    })
+  })
+  
+  # Funkcja do obliczania różnicy pomiędzy kwantylem 0.995 a średnią
+  observeEvent(input$generate_table, {
+    diff_data <- data.frame(Ubezpieczyciel = character(), Brutto = numeric(), Netto = numeric(), Różnice_Brutto = numeric(), Różnice_Netto = numeric(), stringsAsFactors = FALSE)
+    
+    for (insurer in names(loaded_data)) {
+      # Pobieramy dane dla każdego ubezpieczyciela
+      data_brutto <- loaded_data[[insurer]]$Brutto
+      data_netto <- loaded_data[[insurer]]$Netto
+      
+      # Obliczamy kwantyl 0.995 i średnią
+      quantile_brutto <- quantile(data_brutto, probs = 0.995, na.rm = TRUE)
+      quantile_netto <- quantile(data_netto, probs = 0.995, na.rm = TRUE)
+      
+      mean_brutto <- mean(data_brutto, na.rm = TRUE)
+      mean_netto <- mean(data_netto, na.rm = TRUE)
+      
+      # Obliczamy różnicę
+      diff_brutto <- quantile_brutto - mean_brutto
+      diff_netto <- quantile_netto - mean_netto
+      
+      # Dodajemy do tabeli
+      diff_data <- rbind(diff_data, data.frame(Ubezpieczyciel = insurer, Brutto = quantile_brutto, Netto = quantile_netto, Różnice_Brutto = (loaded_data_porownanie$Brutto[loaded_data_porownanie$Ubezpieczyciel == insurer] - diff_brutto) / loaded_data_porownanie$Brutto[loaded_data_porownanie$Ubezpieczyciel == insurer], Różnice_Netto = (loaded_data_porownanie$Netto[loaded_data_porownanie$Ubezpieczyciel == insurer] - diff_netto) / loaded_data_porownanie$Netto[loaded_data_porownanie$Ubezpieczyciel == insurer]))
     }
     
-    output$moving_avg_plot <- renderPlot({
-      plot_moving_averages(data, window_size, stat_type = "mean", quantile_value = quantile_value)
-    })
+    # Formatujemy tabelę
+    diff_data$Różnice_Brutto <- sapply(diff_data$Różnice_Brutto, function(x) round(x,2))
+    diff_data$Różnice_Netto <- sapply(diff_data$Różnice_Netto, function(x) round(x,1))
     
-    output$sd_plot <- renderPlot({
-      plot_moving_averages(data, window_size, stat_type = "sd", quantile_value = quantile_value)
-    })
-    
-    output$var_plot <- renderPlot({
-      plot_moving_averages(data, window_size, stat_type = "var", quantile_value = quantile_value)
+    # Wyświetlanie tabeli z różnicami
+    output$diff_table <- renderDT({
+      datatable(diff_data, options = list(pageLength = 10))
     })
   })
 }
 
 # Uruchomienie aplikacji
 shinyApp(ui = ui, server = server)
-
