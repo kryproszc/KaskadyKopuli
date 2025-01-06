@@ -11,14 +11,15 @@ calculate_quantiles <- function(data) {
 # Załaduj dane ubezpieczycieli
 loaded_data <- list(
   AXA = data.frame(Brutto = 300*rnorm(1000), Netto = 300*rnorm(1000)),
-  PZU = data.frame(Brutto = 500*rnorm(1000), Netto = 500*rnorm(1000))
+  PZU = data.frame(Brutto = 500*rnorm(1000), Netto = 500*rnorm(1000)),
+  UNIQA = data.frame(Brutto_Katastoficzny = 1009*rnorm(1000), Netto_Katastoficzny = 1009*rnorm(1000))
 )
 
 # Załaduj dane porównania SF/IM
 loaded_data_porownanie <- data.frame(
-  Ubezpieczyciel = c("AXA", "PZU"),
-  Brutto = c(300, 500),
-  Netto = c(300, 500)
+  Ubezpieczyciel = c("AXA", "PZU", "UNIQA"),
+  Brutto = c(0, 500, 1009),
+  Netto = c(300, 500, 1009)
 )
 
 # Funkcja do formatowania liczb jako całkowite
@@ -44,12 +45,8 @@ ui <- fluidPage(
         
         # Zakładka "Porównanie SF/IM"
         tabPanel("Porównanie SF/IM", 
-                 h3("Porównanie SF/IM"), 
-                 p("Tutaj możesz dodać wykresy lub inne dane dotyczące porównania SF/IM.")),  # Zakładka porównawcza
+                 DTOutput("diff_table")),  # Zakładka porównawcza
         
-        # Nowa zakładka do obliczania różnic
-        tabPanel("Różnice Kwantyl 0.995 - Średnia", 
-                 DTOutput("diff_table"))  # Tabela z różnicami
       )
     )
   )
@@ -111,21 +108,38 @@ server <- function(input, output, session) {
       mean_brutto <- mean(data_brutto, na.rm = TRUE)
       mean_netto <- mean(data_netto, na.rm = TRUE)
       
-      # Obliczamy różnicę
-      diff_brutto <- quantile_brutto - mean_brutto
-      diff_netto <- quantile_netto - mean_netto
+      # Jeśli wartość w loaded_data_porownanie = 0, nie obliczamy
+      if (loaded_data_porownanie$Brutto[loaded_data_porownanie$Ubezpieczyciel == insurer] == 0) {
+        diff_brutto <- NA
+      } else {
+        diff_brutto <- (loaded_data_porownanie$Brutto[loaded_data_porownanie$Ubezpieczyciel == insurer] - quantile_brutto) / loaded_data_porownanie$Brutto[loaded_data_porownanie$Ubezpieczyciel == insurer]
+      }
+      
+      if (loaded_data_porownanie$Netto[loaded_data_porownanie$Ubezpieczyciel == insurer] == 0) {
+        diff_netto <- NA
+      } else {
+        diff_netto <- (loaded_data_porownanie$Netto[loaded_data_porownanie$Ubezpieczyciel == insurer] - quantile_netto) / loaded_data_porownanie$Netto[loaded_data_porownanie$Ubezpieczyciel == insurer]
+      }
       
       # Dodajemy do tabeli
-      diff_data <- rbind(diff_data, data.frame(Ubezpieczyciel = insurer, Brutto = quantile_brutto, Netto = quantile_netto, Różnice_Brutto = (loaded_data_porownanie$Brutto[loaded_data_porownanie$Ubezpieczyciel == insurer] - diff_brutto) / loaded_data_porownanie$Brutto[loaded_data_porownanie$Ubezpieczyciel == insurer], Różnice_Netto = (loaded_data_porownanie$Netto[loaded_data_porownanie$Ubezpieczyciel == insurer] - diff_netto) / loaded_data_porownanie$Netto[loaded_data_porownanie$Ubezpieczyciel == insurer]))
+      diff_data <- rbind(diff_data, data.frame(Ubezpieczyciel = insurer, Brutto = quantile_brutto, Netto = quantile_netto, Różnice_Brutto = diff_brutto, Różnice_Netto = diff_netto))
     }
     
     # Formatujemy tabelę
-    diff_data$Różnice_Brutto <- sapply(diff_data$Różnice_Brutto, function(x) round(x,2))
-    diff_data$Różnice_Netto <- sapply(diff_data$Różnice_Netto, function(x) round(x,1))
+    diff_data$Różnice_Brutto <- sapply(diff_data$Różnice_Brutto, function(x) ifelse(is.na(x), "", format_numbers(x)))
+    diff_data$Różnice_Netto <- sapply(diff_data$Różnice_Netto, function(x) ifelse(is.na(x), "", format_numbers(x)))
     
-    # Wyświetlanie tabeli z różnicami
+    # Stylowanie komórek w zależności od wartości
     output$diff_table <- renderDT({
-      datatable(diff_data, options = list(pageLength = 10))
+      datatable(diff_data, options = list(pageLength = 10)) %>%
+        formatStyle(
+          'Różnice_Brutto', 
+          color = styleInterval(0, c('red', 'green'))
+        ) %>%
+        formatStyle(
+          'Różnice_Netto', 
+          color = styleInterval(0, c('red', 'green'))
+        )
     })
   })
 }
