@@ -1,119 +1,98 @@
-library(dplyr)
+library(shiny)
 
-primary_fire <- data.frame(
-  Insurer = c("Insurer1", "Insurer2", "Insurer3", "Insurer4"),
-  IndexTable = c(1, 2, 3, 4),
-  Longitude = c(20.0, 21.5, 22.0, 23.0),
-  Latitude = c(50.0, 51.5, 52.0, 53.0),
-  Region = c("Region1", "Region2", "Region3", "Region4"),
-  Month = c("Jan", "Feb", "Mar", "Apr"),
-  ReasekuracjaF = c("Yes", "No", "Yes", "No"),
-  SumValue = c(1, 2, 3, 4),
-  Szkoda = c(5, 6, 7, 8),
-  SzkodaReas = c(9, 11, 12, 13)
+# Przykładowe dane w dataframe
+data <- data.frame(
+  Opcja = c("Opcja 1", "Opcja 2", "Opcja 3"),
+  Min = c(0, 10, 20),
+  Max = c(1000000000, 200, 300)
 )
 
-spread_fire <- data.frame(
-  Promien = c(10, 15, 20, 10),
-  lat = c(50.0, 51.5, 52.0, 53.0),
-  lon = c(20.0, 21.5, 22.0, 23.0),
-  insurance = c("Insurer1", "Insurer2", "Insurer3", "Insurer4"),
-  reasurence = c("Yes", "No", "Yes", "No"),
-  SumValue = c(14, 15, 16, 17),
-  WielkoscKwota = c(18, 19, 20, 21),
-  IndexTable = c(1, 1,3, 4),
-  Region = c("Region1", "Region2", "Region3", "Region4"),
-  Month = c("Jan", "Feb", "Mar", "Apr"),
-  ReasonFire = c(10,20,30,40)
+# UI
+ui <- fluidPage(
+  titlePanel("Przykład dynamicznego suwaka"),
+  
+  # Definicja sidebarLayout
+  sidebarLayout(
+    # Panel boczny (sidebar)
+    sidebarPanel(
+      # Lista rozwijana na podstawie danych
+      selectInput("option", "Wybierz opcję:", choices = data$Opcja),
+      
+      # Dynamiczny suwak na podstawie zakresu w dataframe
+      uiOutput("slider_ui"),
+      
+      actionButton("goButton", "Kliknij")
+    ),
+    
+    # Główna część (main panel)
+    mainPanel(
+      textOutput("selectedOption"),
+      textOutput("selectedRange"),
+      textOutput("buttonText")
+    )
+  )
 )
 
-
-
-
-
-############
-
-
-unique_index_tables <- unique(primary_fire$IndexTable)
-
-total_szkoda_zdarzenie_all <- numeric(length(unique_index_tables))
-
-for (i in unique_index_tables) {
-  primary_fire_index <- primary_fire[primary_fire$IndexTable == i, ]
-  spread_fire_index <- spread_fire[spread_fire$IndexTable == i, ]
-  szkoda_value <- ifelse(is.na(primary_fire_index$Szkoda), 0, primary_fire_index$Szkoda)
-  wielkosc_kwota_sum <- sum(ifelse(is.na(spread_fire_index$WielkoscKwota), 0, spread_fire_index$WielkoscKwota))
-  total_szkoda_zdarzenie_all[i] <- szkoda_value + wielkosc_kwota_sum
-}
-
-total_szkoda_zdarzenie_all
-primary_fire$SzkodaZdarzenie<-total_szkoda_zdarzenie_all
-
-
-
-####
-
-
-calculate_total <- function(choice,primary_fire,spread_fire) {
-  unique_index_tables <- unique(primary_fire$IndexTable)
+# Server
+server <- function(input, output, session) {
   
-  total_szkoda_zdarzenie_all <- numeric(length(unique_index_tables))
+  # Reactive values do przechowywania wartości suwaka
+  rv <- reactiveValues(sliderValue = c(0, 100))  # Początkowy zakres suwaka
   
-  for (i in unique_index_tables) {
-    primary_fire_index <- primary_fire[primary_fire$IndexTable == i, ]
+  # Dynamiczne generowanie suwaka na podstawie wybranej opcji
+  output$slider_ui <- renderUI({
+    # Filtracja danych na podstawie wybranej opcji
+    selected_data <- data[data$Opcja == input$option, ]
     
-    spread_fire_index <- spread_fire[spread_fire$IndexTable == i, ]
-    
-    if (choice == "Wielkość Straty") {
-      szkoda_value <- ifelse(is.na(primary_fire_index$Szkoda), 0, primary_fire_index$Szkoda)
-      wielkosc_kwota_sum <- sum(ifelse(is.na(spread_fire_index$WielkoscKwota), 0, spread_fire_index$WielkoscKwota))
-      total_szkoda_zdarzenie_all[i] <- szkoda_value + wielkosc_kwota_sum
+    # Sprawdzamy, czy dane dla tej opcji istnieją
+    if (nrow(selected_data) == 0) {
+      return(NULL)  # Jeśli brak danych, nie twórz suwaka
     }
     
-    else if (choice == "Suma Ubezpieczenia") {
-      sum_value_data <- sum(ifelse(is.na(primary_fire_index$SumValue), 0, primary_fire_index$SumValue))
-      sum_value_buildings <- sum(ifelse(is.na(spread_fire_index$SumValue), 0, spread_fire_index$SumValue))
-      total_szkoda_zdarzenie_all[i] <- sum_value_data + sum_value_buildings
+    # Pobieramy wartości Min i Max
+    min_value <- selected_data$Min[1]
+    max_value <- selected_data$Max[1]
+    
+    # Jeżeli wartości Min lub Max są NA, ustawiamy wartości domyślne
+    if (is.na(min_value) || is.na(max_value)) {
+      min_value <- 0
+      max_value <- 100
     }
     
-    else if (choice == "Szkoda po Reasekuracji") {
-      szkoda_value_reas <- ifelse(is.na(primary_fire_index$SzkodaReas), 0, primary_fire_index$SzkodaReas)
-      szkoda_reas_sum <- sum(ifelse(is.na(spread_fire_index$ReasonFire), 0, spread_fire_index$ReasonFire))
-      total_szkoda_zdarzenie_all[i] <- szkoda_value_reas+szkoda_reas_sum
-    }
-  }
-    return(total_szkoda_zdarzenie_all)
-}
-
-result_wielkosc_straty <- calculate_total("Wielkość Straty",primary_fire,spread_fire)
-result_suma_ubezpieczenia <- calculate_total("Suma Ubezpieczenia",primary_fire,spread_fire)
-result_szkoda_reas <- calculate_total("Szkoda po Reasekuracji",primary_fire,spread_fire)
-
-# Sprawdzanie wyników
-result_wielkosc_straty
-result_suma_ubezpieczenia
-result_szkoda_reas
-
-primary_fire$SumaUbezpieczeniaZdarzenie<-result_suma_ubezpieczenia
-primary_fire$WielkoscStratyZdarzenie<-result_wielkosc_straty
-primary_fire$WielkoscStratyReasekuracja<-result_szkoda_reas
-
-
-
-
-get_top_n_rows <- function(column_name, n,primary_fire) {
-  if (!(column_name %in% colnames(primary_fire))) {
-    stop("Kolumna nie istnieje w zbiorze danych")
-  }
+    # Tworzymy suwak z wartościami min, max i value
+    sliderInput("range", "Wybierz zakres:", 
+                min = min_value, 
+                max = max_value, 
+                value = rv$sliderValue)  # Zmieniamy wartość na przechowywaną w reactiveValues
+  })
   
-  top_n_rows <- primary_fire[order(-primary_fire[[column_name]]), ][1:n, ]
-    return(top_n_rows)
+  # Kiedy suwak jest zmieniany, zapisz wartość
+  observe({
+    if (!is.null(input$range)) {
+      rv$sliderValue <- input$range
+    }
+  })
+  
+  # Wydrukowanie wybranej opcji
+  output$selectedOption <- renderText({
+    paste("Wybrana opcja:", input$option)
+  })
+  
+  # Wydrukowanie zakresu suwaka
+  output$selectedRange <- renderText({
+    paste("Wybrany zakres:", rv$sliderValue[1], "do", rv$sliderValue[2])
+  })
+  
+  # Wydrukowanie tekstu po kliknięciu przycisku
+  output$buttonText <- renderText({
+    if (input$goButton > 0) {
+      paste("Przycisk został kliknięty", input$goButton, "razy")
+    } else {
+      "Przycisk jeszcze nie kliknięty"
+    }
+  })
 }
 
-top_2_suma_ubezpieczenia <- get_top_n_rows("SumaUbezpieczeniaZdarzenie", 2,primary_fire)
-
-
-index_filtr<-top_2_suma_ubezpieczenia$IndexTable
-spread_fire_XXX<-spread_fire[spread_fire$IndexTable %in% index_filtr,]
-spread_fire_XXX
+# Uruchomienie aplikacji
+shinyApp(ui = ui, server = server)
 
