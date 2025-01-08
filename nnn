@@ -1,98 +1,15 @@
-library(shiny)
+wojewodztwa <- c("Nieznane województwo", "Mazowieckie", "Małopolskie", "Łódzkie", "Dolnośląskie", 
+                 "Wielkopolskie", "Pomorskie", "Zachodniopomorskie", "Kujawsko-Pomorskie", 
+                 "Lubelskie", "Śląskie", "Świętokrzyskie", "Warmińsko-Mazurskie", 
+                 "Lubuskie", "Opolskie", "Podkarpackie")
 
-# Przykładowe dane w dataframe
-data <- data.frame(
-  Opcja = c("Opcja 1", "Opcja 2", "Opcja 3"),
-  Min = c(0, 10, 20),
-  Max = c(1000000000, 200, 300)
-)
+# Wektor miesięcy
+miesiace <- c("Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", 
+              "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień")
 
-# UI
-ui <- fluidPage(
-  titlePanel("Przykład dynamicznego suwaka"),
-  
-  # Definicja sidebarLayout
-  sidebarLayout(
-    # Panel boczny (sidebar)
-    sidebarPanel(
-      # Lista rozwijana na podstawie danych
-      selectInput("option", "Wybierz opcję:", choices = data$Opcja),
-      
-      # Dynamiczny suwak na podstawie zakresu w dataframe
-      uiOutput("slider_ui"),
-      
-      actionButton("goButton", "Kliknij")
-    ),
-    
-    # Główna część (main panel)
-    mainPanel(
-      textOutput("selectedOption"),
-      textOutput("selectedRange"),
-      textOutput("buttonText")
-    )
+# Przypisanie wartości do dataframe
+df <- df %>%
+  mutate(
+    Region = wojewodztwa[Region + 1],  # Dodajemy 1, ponieważ indeksy w R zaczynają się od 1
+    Month = miesiace[Month + 1]       # Podobnie, dodajemy 1, aby indeksy pasowały do miesięcy
   )
-)
-
-# Server
-server <- function(input, output, session) {
-  
-  # Reactive values do przechowywania wartości suwaka
-  rv <- reactiveValues(sliderValue = c(0, 100))  # Początkowy zakres suwaka
-  
-  # Dynamiczne generowanie suwaka na podstawie wybranej opcji
-  output$slider_ui <- renderUI({
-    # Filtracja danych na podstawie wybranej opcji
-    selected_data <- data[data$Opcja == input$option, ]
-    
-    # Sprawdzamy, czy dane dla tej opcji istnieją
-    if (nrow(selected_data) == 0) {
-      return(NULL)  # Jeśli brak danych, nie twórz suwaka
-    }
-    
-    # Pobieramy wartości Min i Max
-    min_value <- selected_data$Min[1]
-    max_value <- selected_data$Max[1]
-    
-    # Jeżeli wartości Min lub Max są NA, ustawiamy wartości domyślne
-    if (is.na(min_value) || is.na(max_value)) {
-      min_value <- 0
-      max_value <- 100
-    }
-    
-    # Tworzymy suwak z wartościami min, max i value
-    sliderInput("range", "Wybierz zakres:", 
-                min = min_value, 
-                max = max_value, 
-                value = rv$sliderValue)  # Zmieniamy wartość na przechowywaną w reactiveValues
-  })
-  
-  # Kiedy suwak jest zmieniany, zapisz wartość
-  observe({
-    if (!is.null(input$range)) {
-      rv$sliderValue <- input$range
-    }
-  })
-  
-  # Wydrukowanie wybranej opcji
-  output$selectedOption <- renderText({
-    paste("Wybrana opcja:", input$option)
-  })
-  
-  # Wydrukowanie zakresu suwaka
-  output$selectedRange <- renderText({
-    paste("Wybrany zakres:", rv$sliderValue[1], "do", rv$sliderValue[2])
-  })
-  
-  # Wydrukowanie tekstu po kliknięciu przycisku
-  output$buttonText <- renderText({
-    if (input$goButton > 0) {
-      paste("Przycisk został kliknięty", input$goButton, "razy")
-    } else {
-      "Przycisk jeszcze nie kliknięty"
-    }
-  })
-}
-
-# Uruchomienie aplikacji
-shinyApp(ui = ui, server = server)
-
