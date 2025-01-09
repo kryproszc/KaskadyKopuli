@@ -1,34 +1,35 @@
-server <- function(input, output) {
-  output$plot <- renderPlot({
-    input$goPlot # Re-run when button is clicked
-    
-    # Create 0-row data frame which will be used to store data
-    dat <- data.frame(x = numeric(0), y = numeric(0))
-    
-    withProgress(message = 'Making plot', value = 0, {
-      # Number of times we'll go through the loop
-      n <- 10
-      
-      for (i in 1:n) {
-        # Each time through the loop, add another row of data. This is
-        # a stand-in for a long-running computation.
-        dat <- rbind(dat, data.frame(x = rnorm(1), y = rnorm(1)))
+load_csv_files <- function(folder_path) {
+  # Pobierz listę plików CSV w folderze
+  csv_files <- list.files(folder_path, pattern = "*.csv", full.names = TRUE)
+  
+  # Tworzymy pustą listę na dane
+  data_list <- list()
+  
+  # Inicjujemy zliczanie postępu
+  withProgress(message = 'Wczytywanie plików CSV...', value = 0, {
+    # Przechodzimy przez wszystkie pliki CSV
+    n <- length(csv_files)
+    for (i in 1:n) {
+      # Wczytujemy plik
+      file <- csv_files[i]
+      tryCatch({
+        # Próba wczytania pliku
+        data <- read.csv(file, fileEncoding = "UTF-8-BOM")
+        # Dodajemy dane do listy
+        data_list[[i]] <- data
         
-        # Increment the progress bar, and update the detail text.
-        incProgress(1/n, detail = paste("Doing part", i))
-        
-        # Pause for 0.1 seconds to simulate a long computation.
-        Sys.sleep(0.1)
-      }
-    })
-    
-    plot(dat$x, dat$y)
+        # Ustawiamy postęp
+        incProgress(1/n, detail = paste("Wczytywanie pliku:", basename(file)))
+      }, error = function(e) {
+        # Obsługuje błąd i wyświetla komunikat
+        message(paste("Błąd podczas wczytywania pliku:", file, "-", e))
+      })
+    }
   })
+  
+  # Przypisanie nazw dla plików
+  names(data_list) <- gsub(".csv", "", basename(csv_files))
+  
+  # Zwracamy listę z danymi
+  return(data_list)
 }
-
-ui <- shinyUI(basicPage(
-  plotOutput('plot', width = "300px", height = "300px"),
-  actionButton('goPlot', 'Go plot')
-))
-
-shinyApp(ui = ui, server = server)
