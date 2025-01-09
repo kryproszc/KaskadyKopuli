@@ -1,35 +1,60 @@
-load_csv_files <- function(folder_path) {
-  # Pobierz listę plików CSV w folderze
-  csv_files <- list.files(folder_path, pattern = "*.csv", full.names = TRUE)
+library(shiny)
+library(shinycssloaders)
+
+# UI
+ui <- fluidPage(
+  actionButton("loadData", "Załaduj dane"),
   
-  # Tworzymy pustą listę na dane
-  data_list <- list()
+  # Miejsce na spinner i dane
+  withSpinner(textOutput("status"))
+)
+
+# Serwer
+server <- function(input, output, session) {
   
-  # Inicjujemy zliczanie postępu
-  withProgress(message = 'Wczytywanie plików CSV...', value = 0, {
-    # Przechodzimy przez wszystkie pliki CSV
-    n <- length(csv_files)
-    for (i in 1:n) {
-      # Wczytujemy plik
-      file <- csv_files[i]
-      tryCatch({
-        # Próba wczytania pliku
-        data <- read.csv(file, fileEncoding = "UTF-8-BOM")
-        # Dodajemy dane do listy
-        data_list[[i]] <- data
+  observeEvent(input$loadData, {
+    # Pokazujemy spinner podczas wczytywania danych
+    output$status <- renderText({
+      "Trwa wczytywanie danych..."
+    })
+    
+    # Użycie withProgress do obsługi długotrwałego procesu
+    withProgress(message = "Wczytywanie danych...", value = 0, {
+      # Symulacja operacji wczytywania danych
+      Sys.sleep(3)  # 3 sekundy opóźnienia na symulację wczytywania danych
+      incProgress(1, detail = "Przetwarzanie danych...")
+      
+      # Wczytanie plików CSV (przykład z Twojego kodu)
+      primary_fire_path <- file.path("ścieżka/do/folderu", "Pierwotny.csv")
+      spread_fire_path <- file.path("ścieżka/do/folderu", "Rozprzestrzeniony.csv")
+      
+      # Sprawdzenie, czy pliki istnieją i ich wczytanie
+      if (file.exists(primary_fire_path)) {
+        primary_fire_df <- read.csv(primary_fire_path, sep = ",", dec = ".")
+        incProgress(0.5, detail = "Przetwarzanie pliku Pierwotny")
         
-        # Ustawiamy postęp
-        incProgress(1/n, detail = paste("Wczytywanie pliku:", basename(file)))
-      }, error = function(e) {
-        # Obsługuje błąd i wyświetla komunikat
-        message(paste("Błąd podczas wczytywania pliku:", file, "-", e))
+        # Dalsze operacje na wczytanym pliku
+        # (np. zamiana kolumn, obliczenia)
+      } else {
+        showNotification("Plik Pierwotny.csv nie istnieje!", type = "error")
+      }
+      
+      if (file.exists(spread_fire_path)) {
+        spread_fire_df <- read.csv(spread_fire_path, sep = ",", dec = ".")
+        incProgress(0.5, detail = "Przetwarzanie pliku Rozprzestrzeniony")
+        
+        # Dalsze operacje na wczytanym pliku
+      } else {
+        showNotification("Plik Rozprzestrzeniony.csv nie istnieje!", type = "error")
+      }
+      
+      # Po zakończeniu operacji zmiana tekstu
+      output$status <- renderText({
+        "Dane zostały wczytane i przetworzone!"
       })
-    }
+    })
   })
-  
-  # Przypisanie nazw dla plików
-  names(data_list) <- gsub(".csv", "", basename(csv_files))
-  
-  # Zwracamy listę z danymi
-  return(data_list)
 }
+
+# Uruchomienie aplikacji
+shinyApp(ui, server)
