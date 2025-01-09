@@ -1,60 +1,63 @@
 library(shiny)
-library(shinycssloaders)
 
-# UI
+# UI aplikacji
 ui <- fluidPage(
-  actionButton("loadData", "Załaduj dane"),
+  titlePanel("Opcje w zakładkach obok siebie w Sidebar"),
   
-  # Miejsce na spinner i dane
-  withSpinner(textOutput("status"))
+  sidebarLayout(
+    sidebarPanel(
+      h4("Opcje do wyboru:"),
+      
+      # Układ zakładek w jednym wierszu w Sidebar
+      fluidRow(
+        column(
+          width = 12,
+          tabsetPanel(
+            id = "sidebar_tabs", # ID zakładek w Sidebar
+            tabPanel(
+              "Ładowanie danych",
+              selectInput("ubezpieczyciel", "Wybierz ubezpieczyciela:", 
+                          choices = c("AGRO_TUW", "PZU", "WARTA")),
+              numericInput("percentyl", "Podaj percentyl (np. 99.5):", value = 9)
+            ),
+            tabPanel(
+              "Filtr ubezpieczyciele",
+              selectInput("kolumna", "Wybierz kolumnę:", 
+                          choices = c("Brutto", "Netto", "Suma")),
+              actionButton("analyze", "Przeprowadź analizę")
+            ),
+            tabPanel(
+              "Filtr Szkody",
+              selectInput("wykres", "Wybierz typ wykresu:", 
+                          choices = c("Histogram", "Wykres liniowy", "Wykres punktowy")),
+              actionButton("plot", "Pokaż wykres")
+            )
+          )
+        )
+      )
+    ),
+    
+    mainPanel(
+      textOutput("output_text")
+    )
+  )
 )
 
-# Serwer
+# Serwer aplikacji
 server <- function(input, output, session) {
-  
-  observeEvent(input$loadData, {
-    # Pokazujemy spinner podczas wczytywania danych
-    output$status <- renderText({
-      "Trwa wczytywanie danych..."
-    })
-    
-    # Użycie withProgress do obsługi długotrwałego procesu
-    withProgress(message = "Wczytywanie danych...", value = 0, {
-      # Symulacja operacji wczytywania danych
-      Sys.sleep(3)  # 3 sekundy opóźnienia na symulację wczytywania danych
-      incProgress(1, detail = "Przetwarzanie danych...")
-      
-      # Wczytanie plików CSV (przykład z Twojego kodu)
-      primary_fire_path <- file.path("ścieżka/do/folderu", "Pierwotny.csv")
-      spread_fire_path <- file.path("ścieżka/do/folderu", "Rozprzestrzeniony.csv")
-      
-      # Sprawdzenie, czy pliki istnieją i ich wczytanie
-      if (file.exists(primary_fire_path)) {
-        primary_fire_df <- read.csv(primary_fire_path, sep = ",", dec = ".")
-        incProgress(0.5, detail = "Przetwarzanie pliku Pierwotny")
-        
-        # Dalsze operacje na wczytanym pliku
-        # (np. zamiana kolumn, obliczenia)
-      } else {
-        showNotification("Plik Pierwotny.csv nie istnieje!", type = "error")
-      }
-      
-      if (file.exists(spread_fire_path)) {
-        spread_fire_df <- read.csv(spread_fire_path, sep = ",", dec = ".")
-        incProgress(0.5, detail = "Przetwarzanie pliku Rozprzestrzeniony")
-        
-        # Dalsze operacje na wczytanym pliku
-      } else {
-        showNotification("Plik Rozprzestrzeniony.csv nie istnieje!", type = "error")
-      }
-      
-      # Po zakończeniu operacji zmiana tekstu
-      output$status <- renderText({
-        "Dane zostały wczytane i przetworzone!"
-      })
-    })
+  output$output_text <- renderText({
+    if (!is.null(input$ubezpieczyciel)) {
+      paste("Wybrano ubezpieczyciela:", input$ubezpieczyciel,
+            "\nPercentyl:", input$percentyl)
+    } else if (!is.null(input$kolumna)) {
+      paste("Wybrano kolumnę:", input$kolumna)
+    } else if (!is.null(input$wykres)) {
+      paste("Wybrano wykres:", input$wykres)
+    } else {
+      "Wybierz opcję w zakładkach."
+    }
   })
 }
 
 # Uruchomienie aplikacji
-shinyApp(ui, server)
+shinyApp(ui = ui, server = server)
