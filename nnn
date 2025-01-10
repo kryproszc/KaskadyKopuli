@@ -2,53 +2,60 @@ library(shiny)
 
 # UI aplikacji
 ui <- fluidPage(
-  titlePanel("Dynamiczny Slider"),
+  titlePanel("Opcje w zakładkach obok siebie w Sidebar"),
   
   sidebarLayout(
     sidebarPanel(
-      fileInput("file", "Wczytaj dane (plik CSV):"),
-      sliderInput("dynamic_slider", "Wybierz zakres:", 
-                  min = 0, max = 10, value = c(2, 8)) # Domyślny slider
+      h4("Opcje do wyboru:"),
+      
+      # Układ zakładek w jednym wierszu w Sidebar
+      fluidRow(
+        column(
+          width = 12,
+          tabsetPanel(
+            id = "sidebar_tabs", # ID zakładek w Sidebar
+            tabPanel(
+              "Ładowanie danych",
+              selectInput("ubezpieczyciel", "Wybierz ubezpieczyciela:", 
+                          choices = c("AGRO_TUW", "PZU", "WARTA")),
+              numericInput("percentyl", "Podaj percentyl (np. 99.5):", value = 9)
+            ),
+            tabPanel(
+              "Filtr ubezpieczyciele",
+              selectInput("kolumna", "Wybierz kolumnę:", 
+                          choices = c("Brutto", "Netto", "Suma")),
+              actionButton("analyze", "Przeprowadź analizę")
+            ),
+            tabPanel(
+              "Filtr Szkody",
+              selectInput("wykres", "Wybierz typ wykresu:", 
+                          choices = c("Histogram", "Wykres liniowy", "Wykres punktowy")),
+              actionButton("plot", "Pokaż wykres")
+            )
+          )
+        )
+      )
     ),
     
     mainPanel(
-      textOutput("slider_values"),
-      tableOutput("data_preview")
+      textOutput("output_text")
     )
   )
 )
 
 # Serwer aplikacji
 server <- function(input, output, session) {
-  # Przechowywanie danych
-  data <- reactive({
-    req(input$file) # Wymaga wczytania pliku
-    read.csv(input$file$datapath)
-  })
-  
-  # Aktualizacja slidera po wczytaniu danych
-  observe({
-    req(data()) # Czeka, aż dane zostaną wczytane
-    
-    # Wyciąganie minimalnej i maksymalnej wartości z danych
-    min_val <- min(data()[[1]], na.rm = TRUE)
-    max_val <- max(data()[[1]], na.rm = TRUE)
-    
-    # Aktualizacja zakresu slidera
-    updateSliderInput(session, "dynamic_slider", 
-                      min = min_val, 
-                      max = max_val, 
-                      value = c(min_val, max_val))
-  })
-  
-  # Wyświetlanie wartości slidera
-  output$slider_values <- renderText({
-    paste("Wybrany zakres:", paste(input$dynamic_slider, collapse = " - "))
-  })
-  
-  # Podgląd danych
-  output$data_preview <- renderTable({
-    head(data(), 5) # Wyświetla pierwsze 5 wierszy danych
+  output$output_text <- renderText({
+    if (!is.null(input$ubezpieczyciel)) {
+      paste("Wybrano ubezpieczyciela:", input$ubezpieczyciel,
+            "\nPercentyl:", input$percentyl)
+    } else if (!is.null(input$kolumna)) {
+      paste("Wybrano kolumnę:", input$kolumna)
+    } else if (!is.null(input$wykres)) {
+      paste("Wybrano wykres:", input$wykres)
+    } else {
+      "Wybierz opcję w zakładkach."
+    }
   })
 }
 
