@@ -1,78 +1,12 @@
-library(shiny)
-
-# UI aplikacji
-ui <- fluidPage(
-  titlePanel("Dynamiczne filtrowanie z wyglądem i układem obok siebie"),
-  
-  sidebarLayout(
-    sidebarPanel(
-      h5("Wartość Sumy ubezpieczenia:"),
-      # Dodanie pól "od" i "do" w jednym rzędzie
-      div(
-        style = "display: flex; align-items: center; gap: 15px;",
-        div(
-          style = "flex: 1;",
-          tags$label("Minimalna:", style = "display: block; margin-bottom: 5px; font-weight: normal;"),
-          numericInput("min_value", NULL, value = 0, width = "100%")
-        ),
-        div(
-          style = "flex: 1;",
-          tags$label("Maksymalna:", style = "display: block; margin-bottom: 5px; font-weight: normal;"),
-          numericInput("max_value", NULL, value = 10, width = "100%")
-        )
-      ),
-      h5("Wartość Sumy Brutto:"),
-      # Dodanie pól "od" i "do" w jednym rzędzie
-      div(
-        style = "display: flex; align-items: center; gap: 15px;",
-        div(
-          style = "flex: 1;",
-          tags$label("Minimalna:", style = "display: block; margin-bottom: 5px; font-weight: normal;"),
-          numericInput("min_value", NULL, value = 0, width = "100%")
-        ),
-        div(
-          style = "flex: 1;",
-          tags$label("Maksymalna:", style = "display: block; margin-bottom: 5px; font-weight: normal;"),
-          numericInput("max_value", NULL, value = 10, width = "100%")
-        )
-      ),
-      
-    ),
-    
-    mainPanel(
-      textOutput("range_values"),
-      tableOutput("filtered_data_preview")
-    )
-  )
-)
-
-# Serwer aplikacji
-server <- function(input, output, session) {
-  # Przykładowe dane
-  data <- reactive({
-    data.frame(
-      ID = 1:20,
-      SumValue = sample(1:100, 20)
-    )
-  })
-  
-  # Filtrowanie danych po kliknięciu przycisku
-  filtered_data <- eventReactive(input$filter_data, {
-    req(input$min_value, input$max_value)
-    data() %>%
-      filter(SumValue >= input$min_value, SumValue <= input$max_value)
-  })
-  
-  # Wyświetlanie wybranego zakresu
-  output$range_values <- renderText({
-    paste("Zakres wybrany: od", input$min_value, "do", input$max_value)
-  })
-  
-  # Wyświetlanie przefiltrowanych danych
-  output$filtered_data_preview <- renderTable({
-    filtered_data()
-  })
+log_memory <- function() {
+  mem <- pryr::mem_used()
+  cat(paste(Sys.time(), "Memory used:", mem, "\n"), file = "memory_log.txt", append = TRUE)
 }
 
-# Uruchomienie aplikacji
-shinyApp(ui = ui, server = server)
+# Przykład użycia w symulacji:
+for (i in 1:100) {
+  x <- rnorm(1e6)  # Przykładowa operacja
+  log_memory()
+  rm(x)
+  gc()  # Zwolnienie pamięci
+}
