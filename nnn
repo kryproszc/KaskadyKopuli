@@ -1,12 +1,37 @@
-log_memory <- function() {
-  mem <- pryr::mem_used()
-  cat(paste(Sys.time(), "Memory used:", mem, "\n"), file = "memory_log.txt", append = TRUE)
+# Inicjalizacja pustej listy do przechowywania wyników
+wyniki <- list()
+
+# Liczba symulacji
+n_symulacji <- 300000
+
+# Pętla symulacyjna
+for (i in 1:n_symulacji) {
+  # Tutaj umieść kod symulacji
+  wynik <- runif(1)  # Przykładowy wynik symulacji
+  
+  # Dodaj wynik do listy
+  wyniki[[i]] <- wynik
+  
+  # Co 1000 iteracji zapisz wyniki do pliku i wyczyść listę
+  if (i %% 1000 == 0) {
+    # Utwórz nazwę pliku z numerem partii
+    nazwa_pliku <- paste0("wyniki_partia_", i / 1000, ".rds")
+    
+    # Zapisz wyniki do pliku
+    saveRDS(wyniki, nazwa_pliku)
+    
+    # Wyczyść listę, aby zwolnić pamięć
+    wyniki <- list()
+    
+    # Opcjonalnie: wywołaj garbage collector
+    gc()
+  }
 }
 
-# Przykład użycia w symulacji:
-for (i in 1:100) {
-  x <- rnorm(1e6)  # Przykładowa operacja
-  log_memory()
-  rm(x)
-  gc()  # Zwolnienie pamięci
+# Jeśli pozostały nie zapisane wyniki po zakończeniu pętli
+if (length(wyniki) > 0) {
+  nazwa_pliku <- paste0("wyniki_partia_", ceiling(n_symulacji / 1000) + 1, ".rds")
+  saveRDS(wyniki, nazwa_pliku)
+  wyniki <- list()
+  gc()
 }
