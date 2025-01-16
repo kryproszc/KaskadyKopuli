@@ -1,2 +1,1 @@
-https://stat.ethz.ch/R-manual/R-devel/library/base/html/Memory-limits.html
-
+    df = df.applymap(lambda x: f"{x:,.2f}".replace(",", " ") if isinstance(x, (int, float)) else x)
