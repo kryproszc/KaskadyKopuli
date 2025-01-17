@@ -1,7 +1,6 @@
-Good morning,
-Referring to the conversation about internal models in Poland.
-In Poland, we have two companies: Interrisk, which has a partial internal model, and Ergo Hestia, which has a full internal model.
-
-Interrisk has now reported a change in the main model, which is planned to be implemented by the end of the year, so we are not submitting Interrisk for review.
-
-As for Ergo Hestia, is it being submitted as a group? The internal model of Ergo Hestia in Poland is aligned with the model for the entire group. Therefore, we are wondering whether to submit Ergo Hestia as a company operating only in Poland.
+    ui.tags.style("""
+        table, th, td {
+            white-space: nowrap;  /* Zapobiega zawijaniu tekstu w komórkach */
+            text-align: right;  /* Wyśrodkowanie liczb */
+        }
+    """)
