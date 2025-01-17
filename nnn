@@ -1,32 +1,74 @@
+from shiny import App, ui, render, reactive
 import pandas as pd
+import os
 
+
+# Funkcja do wczytywania danych z Excela
 def load_excel_data(folder_path, file_name, sheet_name, start_row, start_col, end_row, end_col):
+    # Zmiana ukośników z \ na / w ścieżce do folderu
+    folder_path = folder_path.replace("\\", "/")
+
     # Tworzymy pełną ścieżkę do pliku Excel
-    file_path = f"{folder_path}/{file_name}"
-    
+    file_path = os.path.join(folder_path, file_name)
+
     # Używamy pandas do wczytania danych z określonego arkusza i zakresu
-    # Używamy "openpyxl" jako silnika dla plików .xlsx
-    data = pd.read_excel(file_path, 
-                          sheet_name=sheet_name, 
-                          header=None,  # Oznacza, że nie traktujemy żadnego wiersza jako nagłówka
-                          engine="openpyxl", 
-                          skiprows=start_row-1,  # Pomijamy wiersze przed startowym wierszem
-                          usecols=range(start_col-1, end_col),  # Wczytujemy tylko wybrany zakres kolumn
-                          nrows=end_row-start_row+1)  # Wczytujemy określoną liczbę wierszy
-    
+    data = pd.read_excel(file_path,
+                         sheet_name=sheet_name,
+                         header=None,  # Oznacza, że nie traktujemy żadnego wiersza jako nagłówka
+                         engine="openpyxl",
+                         skiprows=start_row - 1,  # Pomijamy wiersze przed startowym wierszem
+                         usecols=range(start_col - 1, end_col),  # Wczytujemy tylko wybrany zakres kolumn
+                         nrows=end_row - start_row + 1)  # Wczytujemy określoną liczbę wierszy
+
     return data
 
-# Przykład użycia:
-folder_path = "ścieżka/do/folderu"  # Wskaż folder, gdzie jest plik
-file_name = "plik.xlsx"  # Nazwa pliku
-sheet_name = "Arkusz1"  # Nazwa arkusza
-start_row = 2  # Wiersz początkowy
-start_col = 2  # Kolumna początkowa
-end_row = 5    # Wiersz końcowy
-end_col = 4    # Kolumna końcowa
 
-# Wczytanie danych
-data = load_excel_data(folder_path, file_name, sheet_name, start_row, start_col, end_row, end_col)
+# UI (Interfejs użytkownika)
+app_ui = ui.page_fluid(
+    ui.input_text("folder_path", "Ścieżka do folderu:", value="C:/Users/Documents"),
+    ui.input_text("file_name", "Nazwa pliku Excel:", value="plik.xlsx"),
+    ui.input_text("sheet_name", "Nazwa arkusza:", value="Arkusz1"),
+    ui.input_numeric("start_row", "Wiersz początkowy:", value=2),
+    ui.input_numeric("start_col", "Kolumna początkowa:", value=2),
+    ui.input_numeric("end_row", "Wiersz końcowy:", value=5),
+    ui.input_numeric("end_col", "Kolumna końcowa:", value=4),
+    ui.input_action_button("load_button", "Wczytaj dane"),
+    ui.output_table("data_table")  # Tabela do wyświetlenia wczytanych danych
+)
 
-# Wyświetlenie wczytanych danych
-print(data)
+
+# Serwer (Logika aplikacji)
+def server(input, output, session):
+    # Reaktywny obiekt przechowujący dane
+    reactive_data = reactive.Value(pd.DataFrame())
+
+    @reactive.Effect
+    def load_data():
+        # Funkcja uruchamiana po kliknięciu przycisku
+        if input.load_button():
+            # Pobieramy dane od użytkownika
+            folder_path = input.folder_path()
+            file_name = input.file_name()
+            sheet_name = input.sheet_name()
+            start_row = input.start_row()
+            start_col = input.start_col()
+            end_row = input.end_row()
+            end_col = input.end_col()
+
+            # Wczytanie danych
+            data = load_excel_data(folder_path, file_name, sheet_name, start_row, start_col, end_row, end_col)
+            # Ustawiamy dane do reactive
+            reactive_data.set(data)
+
+    @output
+    @render.table
+    def data_table():
+        # Zwracamy wczytane dane do wyświetlenia w tabeli
+        return reactive_data.get()
+
+
+# Tworzenie aplikacji
+app = App(app_ui, server)
+
+if __name__ == "__main__":
+    app.run(port=8000)
