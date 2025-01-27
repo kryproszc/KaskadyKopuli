@@ -1,4 +1,32 @@
-df_cumsum <- df
-for (i in 2:ncol(df)) {
-  df_cumsum[, i] <- df_cumsum[, i] + df_cumsum[, i - 1]
+library(openxlsx)
+
+generate_and_save_quantiles <- function(data, quantiles, sheet_name, wb) {
+  quantile_values <- quantile(data, quantiles)
+  df_quantiles <- data.frame(Kwantyl = quantiles, Wartość = quantile_values)
+  
+  addWorksheet(wb, sheetName = sheet_name)
+  writeData(wb, sheet = sheet_name, df_quantiles, startCol = 1, startRow = 1)
+  
+  png_file <- tempfile(fileext = ".png")
+  png(png_file, width = 800, height = 600)
+  plot(quantiles, quantile_values, type = "b", 
+       xlab = "Kwantyle", ylab = "Wartości Kwantyli", 
+       main = paste("Kwantyle danych -", sheet_name), 
+       col = "blue", pch = 16, xlim = c(0, 1), ylim = range(quantile_values))
+  abline(v = 0, col = "red", lty = 2)
+  dev.off()
+  
+  insertImage(wb, sheet = sheet_name, file = png_file, startCol = 5, startRow = 1, width = 6, height = 4)
 }
+
+wb <- createWorkbook()
+quantiles <- c(seq(0, 1, by = 0.1))
+
+for (i in 1:3) {
+  data <- rnorm(1000)
+  sheet_name <- paste("kwantyl", i, sep = "")
+  generate_and_save_quantiles(data, quantiles, sheet_name, wb)
+}
+
+file_name <- "kwantyle_dane.xlsx"
+saveWorkbook(wb, file = file_name, overwrite = TRUE)
