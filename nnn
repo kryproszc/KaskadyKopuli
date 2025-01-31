@@ -1,59 +1,15 @@
-import plotly.express as px
-import pandas as pd
-
-# Tworzenie danych dla wykresu Gantta
-df = pd.DataFrame([
-    {"Task": "Opracowanie nowej koncepcji modelu", "Start": "2024-01-01", "Finish": "2024-04-01", "Prace": "Koncepcja"},
-    {"Task": "Opracowanie koncepcji parametryzacji rozprzestrzenienia", "Start": "2024-02-01", "Finish": "2024-04-15", "Prace": "Koncepcja"},
-    {"Task": "Opracowanie algorytmu geokodowania i losowanie budynków", "Start": "2024-07-01", "Finish": "2024-08-15", "Prace": "Koncepcja"},
-
-    {"Task": "Implementacja prototypu modelu w R i Rcpp", "Start": "2024-02-15", "Finish": "2024-05-15", "Prace": "Implementacja"},
-    {"Task": "Implementacja modelu pożaru w C++", "Start": "2024-05-01", "Finish": "2024-08-01", "Prace": "Implementacja"},
-    {"Task": "Implementacja moduły geokodowania i losowania budynków", "Start": "2024-06-15", "Finish": "2024-09-01", "Prace": "Implementacja"},
-    {"Task": "Przygotowanie programu do wizualizacji", "Start": "2024-05-01", "Finish": "2024-12-31", "Prace": "Implementacja"},
-
-    
-    {"Task": "Zbierania czyszczenie i standaryzacji danych od zakładów", "Start": "2024-06-20", "Finish": "2024-08-15", "Prace": "Przygotowanie Danych"},
-    {"Task": "Poprawa danych i kontakt z Zakładami", "Start": "2024-08-01", "Finish": "2024-10-01", "Prace": "Przygotowanie Danych"},
-    
-    {"Task": "Geokodowanie adresów i parametryzacja modelu", "Start": "2024-11-01", "Finish": "2024-12-01", "Prace": "Obliczenia"},
-    {"Task": "Uruchomienie programu i analiza wyników", "Start": "2024-12-01", "Finish": "2024-12-31", "Prace": "Obliczenia"},
-    {"Task": "Korekta danych wejściowych", "Start": "2024-12-15", "Finish": "2025-01-10", "Prace": "Przygotowanie Danych"},
-    {"Task": "Przygotowanie ostatecznych danych wejściowych (geokodowanie i parametryzacja)", "Start": "2024-12-15", "Finish": "2025-01-10", "Prace": "Przygotowanie Danych"},
-    {"Task": "Ostateczne uruchomienie programy symulacji pożarów", "Start": "2025-01-10", "Finish": "2025-01-30", "Prace": "Obliczenia"},
-    {"Task": "Analiza wyników i wyciągnięcie wniosków", "Start": "2025-01-20", "Finish": "2025-01-30", "Prace": "Obliczenia"},
-
-
-])
-
-# Konwersja dat
-df["Start"] = pd.to_datetime(df["Start"])
-df["Finish"] = pd.to_datetime(df["Finish"])
-
-# Nowa paleta kolorów do prezentacji
-presentation_colors = {
-    "Koncepcja": "#4B0082",      # Indigo - Innowacja i analiza
-    "Implementacja": "#008080",   # Teal - Stabilność i precyzja
-    "Przygotowanie Danych": "#FFBF00", # Amber - Działanie i optymizm
-    "Obliczenia": "#DC143C"   # Crimson - Kluczowe momenty i zakończenie
-}
-
-# Tworzenie wykresu Gantta z nową paletą kolorów i większą szerokością
-fig = px.timeline(df, x_start="Start", x_end="Finish", y="Task", color="Prace",
-                  title="Harmonogram etapów pracy w ramach modelu ryzyka pożaru.", template="plotly_white",
-                  color_discrete_map=presentation_colors)
-
-# Poprawienie wyglądu wykresu
-fig.update_layout(
-    xaxis_title="Czas",
-    yaxis_title="Etapy pracy",
-    font=dict(family="Arial", size=12),
-    showlegend=True,
-    xaxis=dict(showgrid=True, tickformat="%Y-%m"),
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
-    width=1500  # Zwiększenie szerokości wykresu
+# Przyklad danych
+df <- data.frame(
+  Column1 = c(11345, 2345, 123456, 7890),
+  Column2 = c(987654, 1234567, 234567, 3456),
+  Column3 = c(12, 34, 56, 78) # Ta kolumna pozostanie niezmieniona
 )
 
-# Wyświetlenie wykresu
-fig.show()
+# Wybieramy kolumny, które mają być sformatowane (np. Column1 i Column2)
+cols_to_format <- c("Column1", "Column2")
+
+# Formatujemy tylko te kolumny
+df[cols_to_format] <- lapply(df[cols_to_format], function(x) format(x, big.mark = " ", scientific = FALSE))
+
+# Zobacz wynik
+print(df)
