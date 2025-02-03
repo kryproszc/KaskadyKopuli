@@ -1,15 +1,94 @@
-# Przyklad danych
-df <- data.frame(
-  Column1 = c(11345, 2345, 123456, 7890),
-  Column2 = c(987654, 1234567, 234567, 3456),
-  Column3 = c(12, 34, 56, 78) # Ta kolumna pozostanie niezmieniona
-)
+js_code_p = """
+$(document).on('click', '#ratios-table-1 td', function() {
+    var row = $(this).closest('tr').index();
+    var col = $(this).index();
+    if (col >= 0) {  // Uwzględnij pierwszą kolumnę (jeśli naprawdę jej potrzebujesz)
+        console.log(`Cell clicked: row=${row}, col=${col}`);
+        if ($(this).hasClass('highlighted')) {
+            $(this).removeClass('highlighted');
+            Shiny.setInputValue('clicked_cell_ratios_table_1', 
+                { row: row, col: col, highlighted: false });
+        } else {
+            $(this).addClass('highlighted');
+            Shiny.setInputValue('clicked_cell_ratios_table_1', 
+                { row: row, col: col, highlighted: true });
+        }
+    }
+});
 
-# Wybieramy kolumny, które mają być sformatowane (np. Column1 i Column2)
-cols_to_format <- c("Column1", "Column2")
+let highlightedCells = [];
 
-# Formatujemy tylko te kolumny
-df[cols_to_format] <- lapply(df[cols_to_format], function(x) format(x, big.mark = " ", scientific = FALSE))
+function highlight_default_cell(offset) {
+    var table = document.getElementById('ratios-table-1');
+    if (table) {
+        console.log(`Highlighting cells with offset: ${offset}`);
 
-# Zobacz wynik
-print(df)
+        // Usuwanie istniejących podświetleń przed dodaniem nowych
+        remove_highlights([]);
+
+        if (offset === 0) {
+            console.log("Offset is zero, no cells will be highlighted.");
+            return;
+        }
+
+        let newHighlightedCells = [];
+
+        // POPR. – w każdej kolumnie inicjujemy foundBase i baseOffset
+        for (let colIndex = 0; colIndex < table.rows[0].cells.length; colIndex++) {
+            let foundBase = false;
+            let baseOffset = -1;
+
+            for (let rowIndex = table.rows.length - 1; rowIndex > 0; rowIndex--) {
+                let cell = table.rows[rowIndex].cells[colIndex];
+                // Jeśli w komórce nie ma zera (np. jest liczba różna od 0),
+                // to uznajemy to za "podstawę" do offsetu.
+                if (cell.innerText.trim() !== '0') {
+                    if (!foundBase) {
+                        baseOffset = rowIndex;
+                        foundBase = true;
+                    }
+
+                    // Obliczamy targetRow w zależności od offsetu.
+                    //let targetRow = baseOffset - (colIndex - 1) - offset;
+                    let targetRow = (colIndex === 0 ? baseOffset : baseOffset - (colIndex - 1)) - offset;
+
+                    if (targetRow >= 0) {
+                        for (let highlightRow = targetRow; highlightRow >= 1; highlightRow--) {
+                            let targetCell = table.rows[highlightRow].cells[colIndex];
+
+                            if (!targetCell.classList.contains('highlighted')) {
+                                targetCell.classList.add('highlighted');
+                                newHighlightedCells.push({ row: highlightRow-1, col: colIndex, highlighted: true });
+                            }
+                        }
+                    }
+                    // Wyjście z pętli, bo dla danej kolumny ustalamy baseOffset
+                    // tylko raz (tj. pierwsze niezerowe od dołu).
+                    break;
+                }
+            }
+        }
+
+        highlightedCells = newHighlightedCells;
+
+        // Wysyłanie wszystkich podświetlonych komórek jednocześnie do Shiny
+        Shiny.setInputValue('all_generated_cells_ratios_table_1', highlightedCells, { priority: "event" });
+    }
+}
+
+function remove_highlights(newHighlightedCells) {
+    var table = document.getElementById('ratios-table-1');
+    highlightedCells.forEach(function (cell) {
+        var targetCell = table.rows[cell.row].cells[cell.col];
+        if (!newHighlightedCells.some(newCell => newCell.row === cell.row && newCell.col === cell.col)) {
+            targetCell.classList.remove('highlighted');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    Shiny.addCustomMessageHandler('highlight_cells', function (offset) {
+        highlight_default_cell(offset);
+    });
+});
+"""
