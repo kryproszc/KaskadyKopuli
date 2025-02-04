@@ -1,94 +1,32 @@
-js_code_p = """
-$(document).on('click', '#ratios-table-1 td', function() {
-    var row = $(this).closest('tr').index();
-    var col = $(this).index();
-    if (col >= 0) {  // Uwzględnij pierwszą kolumnę (jeśli naprawdę jej potrzebujesz)
-        console.log(`Cell clicked: row=${row}, col=${col}`);
-        if ($(this).hasClass('highlighted')) {
-            $(this).removeClass('highlighted');
-            Shiny.setInputValue('clicked_cell_ratios_table_1', 
-                { row: row, col: col, highlighted: false });
-        } else {
-            $(this).addClass('highlighted');
-            Shiny.setInputValue('clicked_cell_ratios_table_1', 
-                { row: row, col: col, highlighted: true });
-        }
-    }
-});
+# Przykładowe dane: macierz 12×8 (liczby od 1 do 96)
+set.seed(123)
+mat <- matrix(sample(1:200, 96, replace = TRUE), nrow = 12, ncol = 8)
+mat
 
-let highlightedCells = [];
+# Liczba wierszy/kolumn, które chcemy "pakietować" w kwadraty 4×4
+block_size <- 4
 
-function highlight_default_cell(offset) {
-    var table = document.getElementById('ratios-table-1');
-    if (table) {
-        console.log(`Highlighting cells with offset: ${offset}`);
+# Zakładamy, że 12 i 8 są wielokrotnościami 4
+n_blocks_row <- nrow(mat) / block_size
+n_blocks_col <- ncol(mat) / block_size
 
-        // Usuwanie istniejących podświetleń przed dodaniem nowych
-        remove_highlights([]);
+# Przygotowujemy macierz wynikową
+result <- matrix(NA, n_blocks_row, n_blocks_col)
 
-        if (offset === 0) {
-            console.log("Offset is zero, no cells will be highlighted.");
-            return;
-        }
-
-        let newHighlightedCells = [];
-
-        // POPR. – w każdej kolumnie inicjujemy foundBase i baseOffset
-        for (let colIndex = 0; colIndex < table.rows[0].cells.length; colIndex++) {
-            let foundBase = false;
-            let baseOffset = -1;
-
-            for (let rowIndex = table.rows.length - 1; rowIndex > 0; rowIndex--) {
-                let cell = table.rows[rowIndex].cells[colIndex];
-                // Jeśli w komórce nie ma zera (np. jest liczba różna od 0),
-                // to uznajemy to za "podstawę" do offsetu.
-                if (cell.innerText.trim() !== '0') {
-                    if (!foundBase) {
-                        baseOffset = rowIndex;
-                        foundBase = true;
-                    }
-
-                    // Obliczamy targetRow w zależności od offsetu.
-                    //let targetRow = baseOffset - (colIndex - 1) - offset;
-                    let targetRow = (colIndex === 0 ? baseOffset : baseOffset - (colIndex - 1)) - offset;
-
-                    if (targetRow >= 0) {
-                        for (let highlightRow = targetRow; highlightRow >= 1; highlightRow--) {
-                            let targetCell = table.rows[highlightRow].cells[colIndex];
-
-                            if (!targetCell.classList.contains('highlighted')) {
-                                targetCell.classList.add('highlighted');
-                                newHighlightedCells.push({ row: highlightRow-1, col: colIndex, highlighted: true });
-                            }
-                        }
-                    }
-                    // Wyjście z pętli, bo dla danej kolumny ustalamy baseOffset
-                    // tylko raz (tj. pierwsze niezerowe od dołu).
-                    break;
-                }
-            }
-        }
-
-        highlightedCells = newHighlightedCells;
-
-        // Wysyłanie wszystkich podświetlonych komórek jednocześnie do Shiny
-        Shiny.setInputValue('all_generated_cells_ratios_table_1', highlightedCells, { priority: "event" });
-    }
+# Pętla po blokach 4×4
+for (i in seq(1, nrow(mat), by = block_size)) {
+  for (j in seq(1, ncol(mat), by = block_size)) {
+    # Wycinamy sub-macierz 4×4
+    sub_mat <- mat[i:(i+block_size-1), j:(j+block_size-1)]
+    
+    # Indeksy do zapisu sumy w macierzy wynikowej
+    block_i <- (i - 1) / block_size + 1
+    block_j <- (j - 1) / block_size + 1
+    
+    # Zapisujemy sumę elementów w bieżącym bloku
+    result[block_i, block_j] <- sum(sub_mat)
+  }
 }
 
-function remove_highlights(newHighlightedCells) {
-    var table = document.getElementById('ratios-table-1');
-    highlightedCells.forEach(function (cell) {
-        var targetCell = table.rows[cell.row].cells[cell.col];
-        if (!newHighlightedCells.some(newCell => newCell.row === cell.row && newCell.col === cell.col)) {
-            targetCell.classList.remove('highlighted');
-        }
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    Shiny.addCustomMessageHandler('highlight_cells', function (offset) {
-        highlight_default_cell(offset);
-    });
-});
-"""
+# Wyświetlamy wynik
+result
