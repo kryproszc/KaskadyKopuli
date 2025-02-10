@@ -1,10 +1,12 @@
 static std::string nazwa_pliku;
+char buf[256] = {0};  // Inicjalizacja bufora
+
+// Kopiowanie zawartości std::string do bufora
+std::snprintf(buf, sizeof(buf), "%s", nazwa_pliku.c_str());
+
 ImGui::Text("Nazwa pliku");
 ImGui::SameLine();
-char buffer[256];
-strcpy(buffer, nazwa_pliku.c_str());
-
-if (ImGui::InputText("##nazwa_pliku", buffer, sizeof(buffer)))
+if (ImGui::InputText("##nazwa_pliku", buf, IM_ARRAYSIZE(buf)))
 {
-    nazwa_pliku = buffer;
+    nazwa_pliku = buf; // Aktualizacja std::string po wpisaniu tekstu
 }
