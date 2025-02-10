@@ -1,4 +1,3 @@
-ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); // Ustawienie szerokości pola
-ImGui::Text("Data obliczen");
+ImGui::Text("Podaj nazwę pliku");
 ImGui::SameLine();
-ImGui::InputInt("##data_obliczen", &wybrany_rok);
+ImGui::InputText("##nazwa_pliku", nazwa_pliku, IM_ARRAYSIZE(nazwa_pliku));
