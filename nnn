@@ -2,8 +2,3 @@ ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.5f); // Ustawienie sze
 ImGui::Text("Data obliczen");
 ImGui::SameLine();
 ImGui::InputInt("##data_obliczen", &wybrany_rok);
-
-ImGui::Text("Liczba scenariuszy");
-ImGui::SameLine();
-ImGui::InputInt("##liczba_scenariuszy", &liczba_symulacji);
-ImGui::PopItemWidth(); 
