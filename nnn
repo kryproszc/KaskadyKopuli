@@ -1,42 +1,23 @@
-void SimpleSeparatorWithText(const char* text) {
-    ImVec2 textSize = ImGui::CalcTextSize(text);  
-    float fullWidth = ImGui::GetContentRegionAvail().x;  // Maksymalna szerokość dostępna w oknie
+void CenteredSeparatorWithBackground(const char* text, float height = 30.0f, ImU32 bgColor = IM_COL32(200, 200, 200, 255), ImU32 textColor = IM_COL32(0, 0, 0, 255)) {
+    ImVec2 availableSize = ImGui::GetContentRegionAvail();  // Pobiera dostępną szerokość
+    ImVec2 textSize = ImGui::CalcTextSize(text);  // Oblicza rozmiar tekstu
+    ImVec2 cursorPos = ImGui::GetCursorScreenPos();  // Pobiera aktualną pozycję kursora
 
-    // Odstęp przed separatorem
-    ImGui::Spacing();
+    float padding = 10.0f;
+    float rectWidth = availableSize.x;  // Szerokość na cały ekran
+    float rectHeight = height;  // Wysokość paska tła
+    float textX = cursorPos.x + (rectWidth - textSize.x) * 0.5f; // Wyśrodkowanie poziome
+    float textY = cursorPos.y + (rectHeight - textSize.y) * 0.5f; // Wyśrodkowanie pionowe
 
-    // Linie przed i po tekście
-    float lineWidth = (fullWidth - textSize.x) / 2.0f - 10.0f; // -10 dla małego odstępu
-    if (lineWidth > 0) {
-        ImGui::SameLine();
-        ImGui::PushItemWidth(lineWidth);
-        ImGui::Separator();
-        ImGui::PopItemWidth();
-    }
+    // Pobranie listy rysowania
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-    // Tekst
-    ImGui::SameLine();
-    ImGui::Text("%s", text);
-    
-    // Druga linia
-    if (lineWidth > 0) {
-        ImGui::SameLine();
-        ImGui::PushItemWidth(lineWidth);
-        ImGui::Separator();
-        ImGui::PopItemWidth();
-    }
+    // Rysowanie szarego prostokąta (tło)
+    drawList->AddRectFilled(cursorPos, ImVec2(cursorPos.x + rectWidth, cursorPos.y + rectHeight), bgColor);
 
-    // Odstęp po separatorze
-    ImGui::Spacing();
-}
+    // Rysowanie tekstu na tle
+    drawList->AddText(ImVec2(textX, textY), textColor, text);
 
-
-void ShowUI() {
-    ImGui::Begin("Separator Test");
-
-    ImGui::Text("Przykładowy tekst przed separatorem");
-    SimpleSeparatorWithText("ODNOWIENIE");
-    ImGui::Text("Przykładowy tekst po separatorze");
-
-    ImGui::End();
+    // Przesunięcie kursora w dół, żeby następne elementy były pod paskiem
+    ImGui::Dummy(ImVec2(rectWidth, rectHeight));
 }
