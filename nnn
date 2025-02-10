@@ -1,3 +1,3 @@
-ImGui::Text("Podaj nazwę pliku");
+ImGui::Text("Nazwa pliku");
 ImGui::SameLine();
-ImGui::InputText("##nazwa_pliku", nazwa_pliku, IM_ARRAYSIZE(nazwa_pliku));
+ImGui::InputText("##nazwa_pliku", buf, IM_ARRAYSIZE(buf));
