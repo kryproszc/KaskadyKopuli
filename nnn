@@ -62,55 +62,29 @@ void render_gui()
         }
     }
 
-    CenteredSeparatorWithBackground("Ustawienia programu");
-    ImGui::InputInt("Data obliczeń", &wybrany_rok);
-    ImGui::InputInt("Liczba scenariuszy", &liczba_symulacji);
-    ImGui::SeparatorText("Rodzaj odnowienia");
-    ImGui::RadioButton("Bez odnowień", &czy_wlaczyc_odnowienia, 0);
-    ImGui::SameLine();
-    ImGui::RadioButton("Odnowienia na podstawie pliku", &czy_wlaczyc_odnowienia, 1);
-    ImGui::SameLine();
-    ImGui::RadioButton("Wszystkie polisy odnowione", &czy_wlaczyc_odnowienia, 2);
-    ImGui::InputInt("Liczba wątków do obliczeń", &liczba_dzialajacych_watkow);
-    progressbar.resize(liczba_dzialajacych_watkow);
-
-    CenteredSeparatorWithBackground("Parametry modelu");
-    ImGui::InputInt("Max. Odległość rozprzestrzenienia pożary [m]", &promien);
-    ImGui::InputInt("Min - Wielkość szkody [zł]", &wartosc_minimalna_szkody_kilka_ubezp, 10000);
-    ImGui::SeparatorText("Uruchamianie i śledzenie wczytywania danych");
-    if (ImGui::Button("Wczytaj dane", ImVec2(ImGui::GetContentRegionAvail().x, 30)))
+    CenteredSeparatorWithBackground("Paski postępu pracy poszczególnych wątków");
+    ImGui::BeginChild("ChildL", ImVec2(0, 156), ImGuiChildFlags_Border, ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar);
+    if (ImGui::BeginMenuBar())
     {
-        std::thread sim_thread(testALL, 1);
-        sim_thread.detach();
-    }
-
-    ImGui::ProgressBar(pasek_postepu_wczytywania_danych, ImVec2(0.0f, 0.0f));
-    ImGui::Text("Pasek postępu wczytywania danych");
-
-    CenteredSeparatorWithBackground("Proces obliczeniowy");
-    if (ImGui::Button("Włącz symulację", ImVec2(ImGui::GetContentRegionAvail().x, 30)))
-    {
-        ImGui::OpenPopup("Krok wymaga potwierdzenia");
+        if (ImGui::BeginMenu("Paski postępu pracy poszczególnych wątków"))
+        {
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
     }
     
-    bool open = true;
-    if (ImGui::BeginPopupModal("Krok wymaga potwierdzenia", &open))
+    if (ImGui::BeginTable("split", 1, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
     {
-        ImGui::SetNextWindowSize(ImVec2(750, 1076 - 120));
-        ImGui::Text("Czy na pewno chcesz uruchomić symulację?");
-        if (ImGui::Button("Tak", ImVec2(ImGui::GetContentRegionAvail().x / 2.0, 25)))
+        ImGui::TableNextColumn();
+        for (int i = 1; i <= liczba_dzialajacych_watkow; i++)
         {
-            ImGui::CloseCurrentPopup();
-            std::thread sim_thread(testALL, 2);
-            sim_thread.detach();
+            ImGui::ProgressBar(progressbar[i - 1], ImVec2(0.f, 0.f));
+            ImGui::SameLine();
+            ImGui::Text("Wątek %02d", i);
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Nie", ImVec2(ImGui::GetContentRegionAvail().x, 25)))
-        {
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::EndPopup();
+        ImGui::EndTable();
     }
-    
+    ImGui::EndChild();
+
     ImGui::End();
 }
