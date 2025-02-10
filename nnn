@@ -1,12 +1,10 @@
+static std::string nazwa_pliku;
 ImGui::Text("Nazwa pliku");
 ImGui::SameLine();
+char buffer[256];
+strcpy(buffer, nazwa_pliku.c_str());
 
-static std::string nazwa_pliku;
-char buf[256];
-strncpy(buf, nazwa_pliku.c_str(), sizeof(buf));
-buf[sizeof(buf) - 1] = 0;
-
-if (ImGui::InputText("##nazwa_pliku", buf, IM_ARRAYSIZE(buf)))
+if (ImGui::InputText("##nazwa_pliku", buffer, sizeof(buffer)))
 {
-    nazwa_pliku = std::string(buf);
+    nazwa_pliku = buffer;
 }
