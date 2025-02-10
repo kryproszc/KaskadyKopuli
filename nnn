@@ -1,23 +1,116 @@
-void CenteredSeparatorWithBackground(const char* text, float height = 30.0f, ImU32 bgColor = IM_COL32(200, 200, 200, 255), ImU32 textColor = IM_COL32(0, 0, 0, 255)) {
-    ImVec2 availableSize = ImGui::GetContentRegionAvail();  // Pobiera dostępną szerokość
-    ImVec2 textSize = ImGui::CalcTextSize(text);  // Oblicza rozmiar tekstu
-    ImVec2 cursorPos = ImGui::GetCursorScreenPos();  // Pobiera aktualną pozycję kursora
+void render_gui()
+{
+    std::vector<std::string> fileNames;
 
-    float padding = 10.0f;
-    float rectWidth = availableSize.x;  // Szerokość na cały ekran
-    float rectHeight = height;  // Wysokość paska tła
-    float textX = cursorPos.x + (rectWidth - textSize.x) * 0.5f; // Wyśrodkowanie poziome
-    float textY = cursorPos.y + (rectHeight - textSize.y) * 0.5f; // Wyśrodkowanie pionowe
+    ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowPos(ImVec2(10, 10));
+    ImGui::SetNextWindowSize(ImVec2(displaySize.x - 20, displaySize.y - 20)); // Margines 10px z każdej strony
 
-    // Pobranie listy rysowania
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImGui::Begin("SYMULATOR POŻARÓW", nullptr, ImGuiWindowFlags_NoResize);
 
-    // Rysowanie szarego prostokąta (tło)
-    drawList->AddRectFilled(cursorPos, ImVec2(cursorPos.x + rectWidth, cursorPos.y + rectHeight), bgColor);
+    CenteredSeparatorWithBackground("Zarządzanie danymi");
+    ImGui::InputInt("Podaj rok, który brać pod uwagę", &wybrany_rok);
+    ImGui::InputText("Podaj ścieżkę folderu z danymi wejściowymi", sciezka_input, 512);
+    ImGui::InputText("Podaj ścieżkę folderu gdzie zapisać wyniki", gdzie_zapisac, 512);
+    ImGui::SeparatorText("Wybór zapisu budynków");
+    ImGui::RadioButton("Wszystkie budynki", &forma_zapisu_budynkow, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("Wybrane budynki", &forma_zapisu_budynkow, 1);
+    ImGui::InputInt("Ilość budynków do zapisania", &ilosc_budynkow_do_zapisania);
 
-    // Rysowanie tekstu na tle
-    drawList->AddText(ImVec2(textX, textY), textColor, text);
+    if (ImGui::Button("Wczytaj listę ubezpieczycieli", ImVec2(ImGui::GetContentRegionAvail().x, 25)))
+    {
+        ubezp_nazwy.clear();
+        flagi.clear();
+        std::string sciezka(sciezka_input);
+        sciezka += "/Ubezpieczyciele";
+        ubezp_nazwy = getFiles(sciezka);
+        flagi.resize(ubezp_nazwy.size());
+    }
 
-    // Przesunięcie kursora w dół, żeby następne elementy były pod paskiem
-    ImGui::Dummy(ImVec2(rectWidth, rectHeight));
+    ImGui::BeginChild("ChildR", ImVec2(0, 140), ImGuiChildFlags_Border, ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar);
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("Wybierz ubezpieczycieli którzy mają brać udział w symulacji"))
+        {
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    if (ImGui::BeginTable("split", 1, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings))
+    {
+        ImGui::TableNextColumn();
+        for (int i = 0; i < ubezp_nazwy.size(); i++)
+        {
+            ImGui::CheckboxFlags(ubezp_nazwy[i].c_str(), &flagi[i], ImGuiComboFlags_PopupAlignLeft);
+        }
+        ImGui::EndTable();
+    }
+    ImGui::EndChild();
+
+    if (ImGui::Button("Wybierz wszystkich", ImVec2(ImGui::GetContentRegionAvail().x, 30)))
+    {
+        fileNames.clear();
+        for (int i = 0; i < ubezp_nazwy.size(); i++)
+        {
+            flagi[i] = 1;
+            if (flagi[i] != 0)
+            {
+                fileNames.push_back(ubezp_nazwy[i]);
+            }
+        }
+    }
+
+    CenteredSeparatorWithBackground("Ustawienia programu");
+    ImGui::InputInt("Data obliczeń", &wybrany_rok);
+    ImGui::InputInt("Liczba scenariuszy", &liczba_symulacji);
+    ImGui::SeparatorText("Rodzaj odnowienia");
+    ImGui::RadioButton("Bez odnowień", &czy_wlaczyc_odnowienia, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("Odnowienia na podstawie pliku", &czy_wlaczyc_odnowienia, 1);
+    ImGui::SameLine();
+    ImGui::RadioButton("Wszystkie polisy odnowione", &czy_wlaczyc_odnowienia, 2);
+    ImGui::InputInt("Liczba wątków do obliczeń", &liczba_dzialajacych_watkow);
+    progressbar.resize(liczba_dzialajacych_watkow);
+
+    CenteredSeparatorWithBackground("Parametry modelu");
+    ImGui::InputInt("Max. Odległość rozprzestrzenienia pożary [m]", &promien);
+    ImGui::InputInt("Min - Wielkość szkody [zł]", &wartosc_minimalna_szkody_kilka_ubezp, 10000);
+    ImGui::SeparatorText("Uruchamianie i śledzenie wczytywania danych");
+    if (ImGui::Button("Wczytaj dane", ImVec2(ImGui::GetContentRegionAvail().x, 30)))
+    {
+        std::thread sim_thread(testALL, 1);
+        sim_thread.detach();
+    }
+
+    ImGui::ProgressBar(pasek_postepu_wczytywania_danych, ImVec2(0.0f, 0.0f));
+    ImGui::Text("Pasek postępu wczytywania danych");
+
+    CenteredSeparatorWithBackground("Proces obliczeniowy");
+    if (ImGui::Button("Włącz symulację", ImVec2(ImGui::GetContentRegionAvail().x, 30)))
+    {
+        ImGui::OpenPopup("Krok wymaga potwierdzenia");
+    }
+    
+    bool open = true;
+    if (ImGui::BeginPopupModal("Krok wymaga potwierdzenia", &open))
+    {
+        ImGui::SetNextWindowSize(ImVec2(750, 1076 - 120));
+        ImGui::Text("Czy na pewno chcesz uruchomić symulację?");
+        if (ImGui::Button("Tak", ImVec2(ImGui::GetContentRegionAvail().x / 2.0, 25)))
+        {
+            ImGui::CloseCurrentPopup();
+            std::thread sim_thread(testALL, 2);
+            sim_thread.detach();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Nie", ImVec2(ImGui::GetContentRegionAvail().x, 25)))
+        {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+    
+    ImGui::End();
 }
