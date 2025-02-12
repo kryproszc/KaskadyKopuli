@@ -415,21 +415,24 @@ heatmap_brutto$Strata_Kategoria <- cut(
 
 
 
+# Zamiana NA na "X"
+heatmap_brutto$Strata_Kategoria <- ifelse(is.na(heatmap_brutto$Strata_Kategoria), "X", heatmap_brutto$Strata_Kategoria)
+
 plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Strata_Kategoria)) +
   geom_tile(color = "black", size = 0.4) +
   scale_fill_manual(
-    values = setNames(kolory, brutto_labels),  # Kolory dopasowane do etykiet
+    values = c(setNames(kolory, brutto_labels), "X" = "white"),  # "X" będzie białe
     name = "Średnia",
-    guide = guide_legend(reverse = TRUE),
-    na.value = "white"  # 🔹 Wymuszenie białego tła dla brakujących wartości
+    guide = guide_legend(override.aes = list(fill = setNames(kolory, brutto_labels))),  # Usunięcie "X" z legendy
+    drop = TRUE  # Usuwa zbędne elementy z legendy (w tym "X")
   ) +
   labs(title = "",
        x = "Miesiąc",
        y = "Województwo") +
   theme_minimal() +
   theme(
-    panel.background = element_rect(fill = "white", color = NA),  # Wymuszenie białego tła
-    plot.background = element_rect(fill = "white", color = NA),   # Białe tło całego wykresu
+    panel.background = element_rect(fill = "white", color = NA),  # Białe tło wykresu
+    plot.background = element_rect(fill = "white", color = NA),   # Białe tło całego obszaru
     axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
     axis.text.y = element_text(size = 9),
     legend.text = element_text(size = 8),
