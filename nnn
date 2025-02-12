@@ -379,3 +379,16 @@ df_rozprzestrzeniony_final<-rbind(df_rozprzestrzeniony_final,wynik_df_rozprzestr
 
 print(df_pierwotny_final)
 print(df_rozprzestrzeniony_final)
+
+
+library(ggplot2)
+library(sf)
+
+plot_punkty <- ggplot() +
+  theme_void() +  # Usunięcie siatki i osi dla czystej mapy
+  theme(panel.background = element_rect(fill = "peachpuff")) +  # Stałe tło w jasnym pomarańczu
+  geom_sf(data = df_pierwotny_filter_sf, 
+          color = "blue",   # Kolor punktów
+          size = 3,         # Rozmiar punktów
+          alpha = 0.8) 
+
