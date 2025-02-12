@@ -338,3 +338,44 @@ df_powiazania_index_rozny <- df_pierwotny %>%
     .groups = "drop"
   ) %>%
   filter(SumaWielkoscKwota > prog_katastrofa) 
+
+
+
+
+df_pierwotny_final <- df_pierwotny %>%
+  filter(!IndexTable %in% df_rozprzestrzeniony$IndexTable, 
+         Szkoda > prog_katastrofa)
+df_filtered_rozprzestrzeniony <- df_rozprzestrzeniony %>%
+  filter(!IndexTable %in% df_pierwotny$IndexTable)
+
+df_suma_rozprzestrzeniony <- df_filtered_rozprzestrzeniony %>%
+  group_by(IndexTable, insurance) %>%
+  summarise(SumaWielkoscKwota = sum(WielkoscKwota), .groups = "drop")
+
+indexy_do_wybrania <- df_suma_rozprzestrzeniony %>%
+  filter(SumaWielkoscKwota > prog_katastrofa) %>%
+  select(IndexTable, insurance)
+
+df_rozprzestrzeniony_final <- df_filtered_rozprzestrzeniony %>%
+  inner_join(indexy_do_wybrania, by = c("IndexTable", "insurance"))
+
+agg_df <- aggregate(WielkoscKwota ~ IndexTable + insurance, 
+                    data = df_rozprzestrzeniony, 
+                    sum)
+merged <- merge(agg_df, df_pierwotny, by = "IndexTable", 
+                suffixes = c("_agg", "_pierwotny"))
+merged$Total <- ifelse(merged$insurance == merged$Insurer,
+                       merged$Szkoda + merged$WielkoscKwota_agg,
+                       merged$WielkoscKwota_agg)
+qualifying_groups <- merged[ merged$Total >= threshold, ]
+official <- merged[ merged$insurance == merged$Insurer, ]
+qualifying_indices <- official$IndexTable[ official$Total >= threshold ]
+wynik_df_pierwotny <- subset(df_pierwotny, IndexTable %in% qualifying_indices)
+wynik_df_rozprzestrzeniony <- merge(df_rozprzestrzeniony, 
+                                    qualifying_groups[, c("IndexTable", "insurance")],
+                                    by = c("IndexTable", "insurance"))
+df_pierwotny_final<-rbind(df_pierwotny_final,wynik_df_pierwotny)
+df_rozprzestrzeniony_final<-rbind(df_rozprzestrzeniony_final,wynik_df_rozprzestrzeniony)
+
+print(df_pierwotny_final)
+print(df_rozprzestrzeniony_final)
