@@ -401,22 +401,24 @@ brutto_breaks <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, lengt
 # Tworzenie etykiet w formie przedziałów
 brutto_labels <- paste0(round(head(brutto_breaks, -1)), " - ", round(tail(brutto_breaks, -1)))
 
-# Upewnienie się, że mamy unikalne przedziały
-brutto_labels <- unique(brutto_labels)
+# Przypisanie każdej wartości do przedziału
+heatmap_brutto$Strata_Kategoria <- cut(
+  heatmap_brutto$Srednia_Strata,
+  breaks = brutto_breaks,
+  labels = brutto_labels,
+  include.lowest = TRUE
+)
 
-# Definiowanie 10-stopniowej skali kolorów
+# Definiowanie 10-stopniowej skali kolorów jako osobnych okienek
 kolory <- c("#FFFFFF", "#FFF5CC", "#FFEB99", "#FFC766", "#FF9933", 
             "#FF6600", "#E64500", "#CC3300", "#991F00", "#660000")
 
-plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Srednia_Strata)) +
-  geom_tile(aes(fill = ifelse(Srednia_Strata == 0, NA, Srednia_Strata)), color = "black", size = 0.4) +
-  scale_fill_gradientn(
-    colours = kolory, 
-    values = scales::rescale(brutto_breaks),  
+plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Strata_Kategoria)) +
+  geom_tile(color = "black", size = 0.4) +
+  scale_fill_manual(
+    values = setNames(kolory, brutto_labels),  # Kolory dopasowane do etykiet
     name = "Średnia",
-    breaks = head(brutto_breaks, -1),  # Punkty podziału legendy
-    labels = brutto_labels,  # Przedziały w legendzie
-    na.value = "white"
+    guide = guide_legend(reverse = TRUE)  # Kolejność od największych do najmniejszych
   ) +
   labs(title = "",
        x = "Miesiąc",
@@ -425,7 +427,7 @@ plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Srednia_
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
     axis.text.y = element_text(size = 9),
-    legend.text = element_text(size = 9),  # Poprawiona czytelność legendy
+    legend.text = element_text(size = 8),  # Poprawiona czytelność legendy
     legend.title = element_text(size = 10, face = "bold"),
     panel.grid = element_blank(),
     aspect.ratio = 0.8
