@@ -380,15 +380,27 @@ df_rozprzestrzeniony_final<-rbind(df_rozprzestrzeniony_final,wynik_df_rozprzestr
 print(df_pierwotny_final)
 print(df_rozprzestrzeniony_final)
 
-
+# Wymagane pakiety
 library(ggplot2)
 library(sf)
+library(dplyr)
 
-plot_punkty <- ggplot() +
-  theme_void() +  # Usunięcie siatki i osi dla czystej mapy
-  theme(panel.background = element_rect(fill = "peachpuff")) +  # Stałe tło w jasnym pomarańczu
+# Wczytanie granic województw
+wojewodztwa <- st_read("wojewodztwa.shp") %>% 
+  st_transform(crs = 4326)  # Transformacja do współrzędnych geograficznych (jeśli potrzebne)
+
+# Tworzenie mapy
+plot_polska <- ggplot() +
+  geom_sf(data = wojewodztwa, 
+          fill = "peachpuff",  # Stałe jasno pomarańczowe tło
+          color = "black",      # Kontury województw
+          size = 0.6) +         # Grubość linii konturów
   geom_sf(data = df_pierwotny_filter_sf, 
-          color = "blue",   # Kolor punktów
-          size = 3,         # Rozmiar punktów
-          alpha = 0.8) 
+          color = "blue",       # Kolor punktów
+          size = 3,             # Wielkość punktów
+          alpha = 0.8) +        # Przezroczystość punktów
+  theme_void()  # Usunięcie siatki i osi
+
+# Wyświetlenie mapy
+print(plot_polska)
 
