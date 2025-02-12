@@ -471,19 +471,25 @@ df_rozprzestrzeniony_filter_sf$Kategoria <- "Pożar rozprzestrzeniony"
 # Połączenie danych w jeden zbiór
 df_pozary <- rbind(df_pierwotny_filter_sf, df_rozprzestrzeniony_filter_sf)
 
-# Tworzenie mapy z legendą
+
+
+
+
+
 plot_polska_kat_netto <- ggplot() +
-  geom_sf(data = wojewodztwa, fill = "#FFF5CC", color = "black", size = 0.6) +  # Warstwa województw
-  geom_sf(data = df_pozary, aes(color = Kategoria), size = 3, alpha = 0.8) +  # Warstwa pożarów
-  scale_color_manual(
-    values = c("Pożar pierwotny" = "red", "Pożar rozprzestrzeniony" = "blue"),
-    name = "Rodzaj Pożaru"
+  geom_sf(data = wojewodztwa, fill = "#FFF5CC", color = "black", size = 0.6) +  # Województwa
+  geom_sf(data = df_pierwotny_filter_sf, color = "red", size = 3, alpha = 0.8, aes(shape = "Pożar pierwotny")) +  # Pożar pierwotny
+  geom_sf(data = df_rozprzestrzeniony_filter_sf, color = "blue", size = 3, alpha = 0.8, aes(shape = "Pożar rozprzestrzeniony")) +  # Pożar rozprzestrzeniony
+  scale_shape_manual(
+    name = "Rodzaj Pożaru", 
+    values = c("Pożar pierwotny" = 16, "Pożar rozprzestrzeniony" = 17)  # Różne symbole dla czytelności legendy
   ) +
+  guides(shape = guide_legend(override.aes = list(color = c("red", "blue")))) +  # Kolory w legendzie
   labs(x = "Długość geograficzna", y = "Szerokość geograficzna") +
   theme_minimal() +
   theme(
     axis.title = element_text(size = 12, face = "bold"),
-    legend.position = "right"  # Umieszczenie legendy po prawej stronie
+    legend.position = "right"  # Legenda po prawej stronie
   )
 
 plot_polska_kat_netto
