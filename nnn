@@ -406,3 +406,29 @@ plot_polska <- ggplot() +
 
 print(plot_polska)
 
+#####
+# Dynamika skali kolorów według kwantyli
+brutto_breaks <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, length.out = 10), na.rm = TRUE)
+
+plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Srednia_Strata)) +
+  geom_tile(aes(fill = ifelse(Srednia_Strata == 0, NA, Srednia_Strata)), color = "black", size = 0.4) +
+  scale_fill_gradientn(
+    colours = c("white", "#FFD580", "#FFA07A", "#FF6347", "darkred"),
+    values = scales::rescale(brutto_breaks),
+    name = "Średnia",
+    breaks = round(brutto_breaks),
+    labels = as.integer(round(brutto_breaks)),
+    na.value = "white"
+  ) +
+  labs(title = "",
+       x = "Miesiąc",
+       y = "Województwo") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
+    axis.text.y = element_text(size = 9),
+    panel.grid = element_blank(),
+    aspect.ratio = 0.8
+  )
+
+
