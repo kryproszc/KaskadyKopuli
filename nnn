@@ -389,18 +389,20 @@ library(dplyr)
 wojewodztwa <- st_read("wojewodztwa.shp") %>% 
   st_transform(crs = 4326)  # Transformacja do współrzędnych geograficznych (jeśli potrzebne)
 
-# Tworzenie mapy
+
+
 plot_polska <- ggplot() +
   geom_sf(data = wojewodztwa, 
-          fill = "peachpuff",  # Stałe jasno pomarańczowe tło
-          color = "black",      # Kontury województw
-          size = 0.6) +         # Grubość linii konturów
+          fill = "peachpuff",  
+          color = "black",     
+          size = 0.6) +        
   geom_sf(data = df_pierwotny_filter_sf, 
-          color = "blue",       # Kolor punktów
-          size = 3,             # Wielkość punktów
-          alpha = 0.8) +        # Przezroczystość punktów
-  theme_void()  # Usunięcie siatki i osi
+          color = "blue",       
+          size = 3,             
+          alpha = 0.8) +        
+  labs(x = "Długość geograficzna", y = "Szerokość geograficzna") +  # Opisy osi
+  theme_minimal() +  # Styl minimalny z siatką
+  theme(axis.title = element_text(size = 12, face = "bold"))  # Pogrubienie opisów
 
-# Wyświetlenie mapy
 print(plot_polska)
 
