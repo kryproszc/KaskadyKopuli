@@ -415,24 +415,44 @@ heatmap_brutto$Strata_Kategoria <- cut(
 
 
 
+
+# Tworzenie 10 kwantyli jako przedziałów
+brutto_breaks <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, length.out = 11), na.rm = TRUE)
+
 # Zamiana NA na "X"
-heatmap_brutto$Strata_Kategoria <- ifelse(is.na(heatmap_brutto$Strata_Kategoria), "X", heatmap_brutto$Strata_Kategoria)
+heatmap_brutto$Strata_Kategoria <- cut(
+  heatmap_brutto$Srednia_Strata,
+  breaks = brutto_breaks,
+  labels = FALSE,  # Używamy indeksów zamiast tekstowych etykiet
+  include.lowest = TRUE
+)
+
+# Zamiana NA na "X"
+heatmap_brutto$Strata_Kategoria[is.na(heatmap_brutto$Strata_Kategoria)] <- "X"
+
+# Lista kolorów
+kolory <- c("#FFFFFF", "#FFF5CC", "#FFEB99", "#FFC766", "#FF9933", 
+            "#FF6600", "#E64500", "#CC3300", "#991F00", "#660000")
+
+# Tworzymy mapowanie kolorów
+kolory_map <- setNames(kolory, as.character(1:10))
+kolory_map["X"] <- "white"  # "X" (dawne NA) jako białe
 
 plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Strata_Kategoria)) +
   geom_tile(color = "black", size = 0.4) +
   scale_fill_manual(
-    values = c(setNames(kolory, brutto_labels), "X" = "white"),  # "X" będzie białe
+    values = kolory_map,  # Kolory dopasowane do indeksów kwantyli
     name = "Średnia",
-    guide = guide_legend(override.aes = list(fill = setNames(kolory, brutto_labels))),  # Usunięcie "X" z legendy
-    drop = TRUE  # Usuwa zbędne elementy z legendy (w tym "X")
+    guide = guide_legend(override.aes = list(fill = kolory_map[-"X"])),  # Usunięcie "X" z legendy
+    drop = TRUE  # Usuwa "X" z legendy
   ) +
   labs(title = "",
        x = "Miesiąc",
        y = "Województwo") +
   theme_minimal() +
   theme(
-    panel.background = element_rect(fill = "white", color = NA),  # Białe tło wykresu
-    plot.background = element_rect(fill = "white", color = NA),   # Białe tło całego obszaru
+    panel.background = element_rect(fill = "white", color = NA),
+    plot.background = element_rect(fill = "white", color = NA),
     axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
     axis.text.y = element_text(size = 9),
     legend.text = element_text(size = 8),
