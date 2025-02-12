@@ -327,3 +327,14 @@ plot_brutto <- ggplot(agregacja) +
   labs(title = "") +
   theme_minimal()
 
+
+df_powiazania_index_rozny <- df_pierwotny %>%
+  inner_join(df_rozprzestrzeniony, by = c("Insurer" = "insurance")) %>%
+  filter(IndexTable.x != IndexTable.y) %>%  # IndexTable różne
+  group_by(IndexTable.x, Insurer) %>%
+  summarise(
+    LiczbaPowiazan = n(),  # Liczba wystąpień IndexTable.x
+    SumaWielkoscKwota = sum(WielkoscKwota, na.rm = TRUE),  # Sumujemy WielkoscKwota
+    .groups = "drop"
+  ) %>%
+  filter(SumaWielkoscKwota > prog_katastrofa) 
