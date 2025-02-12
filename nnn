@@ -413,11 +413,11 @@ brutto_breaks <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, lengt
 plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Srednia_Strata)) +
   geom_tile(aes(fill = ifelse(Srednia_Strata == 0, NA, Srednia_Strata)), color = "black", size = 0.4) +
   scale_fill_gradientn(
-    colours = c("white", "#FFD580", "#FFA07A", "#FF6347", "darkred"),
+    colours = c("white", "#FFD580", "#FF6347", "darkred"),  # Cztery podane kolory
     values = scales::rescale(brutto_breaks),
     name = "Średnia",
-    breaks = round(brutto_breaks),
-    labels = as.integer(round(brutto_breaks)),
+    breaks = brutto_breaks,  # Wyświetlenie dokładnych wartości kwantyli
+    labels = round(brutto_breaks, 0),  # Zaokrąglenie liczb na skali
     na.value = "white"
   ) +
   labs(title = "",
