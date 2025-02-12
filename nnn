@@ -391,33 +391,31 @@ wojewodztwa <- st_read("wojewodztwa.shp") %>%
 
 
 
-plot_polska <- ggplot() +
-  geom_sf(data = wojewodztwa, 
-          fill = "peachpuff",  
-          color = "black",     
-          size = 0.6) +        
-  geom_sf(data = df_pierwotny_filter_sf, 
-          color = "blue",       
-          size = 3,             
-          alpha = 0.8) +        
-  labs(x = "Długość geograficzna", y = "Szerokość geograficzna") +  # Opisy osi
-  theme_minimal() +  # Styl minimalny z siatką
-  theme(axis.title = element_text(size = 12, face = "bold"))  # Pogrubienie opisów
 
-print(plot_polska)
 
-#####
-# Dynamika skali kolorów według kwantyli
-brutto_breaks <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, length.out = 10), na.rm = TRUE)
+
+
+# Tworzenie 10 kwantyli jako przedziałów
+brutto_breaks <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, length.out = 11), na.rm = TRUE)
+
+# Tworzenie etykiet w formie przedziałów
+brutto_labels <- paste0(round(head(brutto_breaks, -1)), " - ", round(tail(brutto_breaks, -1)))
+
+# Upewnienie się, że mamy unikalne przedziały
+brutto_labels <- unique(brutto_labels)
+
+# Definiowanie 10-stopniowej skali kolorów
+kolory <- c("#FFFFFF", "#FFF5CC", "#FFEB99", "#FFC766", "#FF9933", 
+            "#FF6600", "#E64500", "#CC3300", "#991F00", "#660000")
 
 plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Srednia_Strata)) +
   geom_tile(aes(fill = ifelse(Srednia_Strata == 0, NA, Srednia_Strata)), color = "black", size = 0.4) +
   scale_fill_gradientn(
-    colours = c("white", "#FFD580", "#FF6347", "darkred"),  # Cztery podane kolory
-    values = scales::rescale(brutto_breaks),
+    colours = kolory, 
+    values = scales::rescale(brutto_breaks),  
     name = "Średnia",
-    breaks = brutto_breaks,  # Wyświetlenie dokładnych wartości kwantyli
-    labels = round(brutto_breaks, 0),  # Zaokrąglenie liczb na skali
+    breaks = head(brutto_breaks, -1),  # Punkty podziału legendy
+    labels = brutto_labels,  # Przedziały w legendzie
     na.value = "white"
   ) +
   labs(title = "",
@@ -427,12 +425,8 @@ plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Srednia_
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
     axis.text.y = element_text(size = 9),
+    legend.text = element_text(size = 9),  # Poprawiona czytelność legendy
+    legend.title = element_text(size = 10, face = "bold"),
     panel.grid = element_blank(),
     aspect.ratio = 0.8
   )
-
-
-kolory <- c("#FFFFFF", "#FFF5CC", "#FFEB99", "#FFC766", "#FF9933", 
-            "#FF6600", "#E64500", "#CC3300", "#991F00", "#660000")
-
-
