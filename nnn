@@ -432,3 +432,7 @@ plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Srednia_
   )
 
 
+kolory <- c("#FFFFFF", "#FFF5CC", "#FFEB99", "#FFC766", "#FF9933", 
+            "#FF6600", "#E64500", "#CC3300", "#991F00", "#660000")
+
+
