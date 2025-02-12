@@ -298,3 +298,32 @@ doc <- read_docx() %>%
 print(doc, target = "raport_straty_pozarowe.docx")
 
 cat("✅ Dokument 'raport_straty_pozarowe.docx' został pomyślnie wygenerowany! 🚀")
+
+
+
+agregacja <- agregacja %>%
+  mutate(Quantile = ntile(AvgBrutto, 5))  # Creating 5 quantiles for AvgBrutto
+
+# Plot with quantiles for color scale
+plot_brutto <- ggplot(agregacja) +
+  geom_sf(aes(fill = factor(Quantile)), color = "black", size = 0.4) +
+  geom_sf(data = df_pierwotny_filter_sf, color = "blue", size = 1.5, alpha = 0.8) +  # Points from the original dataset
+  geom_text(data = st_centroid(agregacja) %>% st_coordinates() %>% as.data.frame() %>%
+              rename(X = X, Y = Y) %>%
+              cbind(agregacja %>% st_drop_geometry()), 
+            aes(x = X, y = Y, label = round(AvgBrutto, 2)),
+            size = 3, color = "black", fontface = "bold") +
+  scale_fill_manual(
+    values = c("#FFF9C4", "#FFEB3B", "#FF9800", "#FF5722", "#D32F2F"),  # Manually assign colors to quantiles
+    name = "Średnia strata",
+    labels = c(
+      paste("Q1: <", round(min(agregacja$AvgBrutto))),
+      paste("Q2: [", round(quantile(agregacja$AvgBrutto, 0.2)), ",", round(quantile(agregacja$AvgBrutto, 0.4)), "]", sep = ""),
+      paste("Q3: [", round(quantile(agregacja$AvgBrutto, 0.4)), ",", round(quantile(agregacja$AvgBrutto, 0.6)), "]", sep = ""),
+      paste("Q4: [", round(quantile(agregacja$AvgBrutto, 0.6)), ",", round(quantile(agregacja$AvgBrutto, 0.8)), "]", sep = ""),
+      paste("Q5: >=", round(quantile(agregacja$AvgBrutto, 0.8)))
+    )
+  ) +
+  labs(title = "") +
+  theme_minimal()
+
