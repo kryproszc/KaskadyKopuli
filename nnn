@@ -413,8 +413,22 @@ heatmap_brutto$Strata_Kategoria <- cut(
 
 
 
-theme(
-    panel.background = element_rect(fill = "white", color = NA),  # Ustawienie białego tła
+
+
+plot_brutto <- ggplot(heatmap_brutto, aes(x = Month, y = Region, fill = Strata_Kategoria)) +
+  geom_tile(color = "black", size = 0.4) +
+  scale_fill_manual(
+    values = setNames(kolory, brutto_labels),  # Kolory dopasowane do etykiet
+    name = "Średnia",
+    guide = guide_legend(reverse = TRUE),
+    na.value = "white"  # 🔹 Wymuszenie białego tła dla brakujących wartości
+  ) +
+  labs(title = "",
+       x = "Miesiąc",
+       y = "Województwo") +
+  theme_minimal() +
+  theme(
+    panel.background = element_rect(fill = "white", color = NA),  # Wymuszenie białego tła
     plot.background = element_rect(fill = "white", color = NA),   # Białe tło całego wykresu
     axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
     axis.text.y = element_text(size = 9),
@@ -422,4 +436,4 @@ theme(
     legend.title = element_text(size = 10, face = "bold"),
     panel.grid = element_blank(),
     aspect.ratio = 0.8
-)
+  )
