@@ -1,6 +1,8 @@
-  theme = bs_theme(
-    bg = "#FBFBF8",  # Ultra-jasny kawowy (prawie biały)
-    fg = "#2D2D2D",  # Profesjonalny, ciemnoszary tekst
-    primary = "#BCAAA4",  # Delikatne beżowo-kawowe akcenty
-    base_font = font_google("Roboto")  # Nowoczesna, biznesowa czcionka
-  ),
+Poniższa tabela przedstawia wartości kwantyli, średniej, odchylenia standardowego oraz współczynnika SCR dla wygenerowanych strat brutto, strat katastroficznych brutto, strat netto oraz strat katastroficznych netto na podstawie 50 symulacji. Te same symulacje zostały przedstawione na wykresie, gdzie na osi X zaznaczono kwantyle, a na osi Y odpowiadające im wartości kwantyli dla szkód.
+
+
+
+W poniższej tabeli przedstawiono liczbę obiektów, w których wystąpił pożar, z podziałem na pożary pierwotne i rozprzestrzenione. Liczby te zostały obliczone dla scenariusza SCR-owego dla poszczególnych strat: brutto, brutto katastroficznego, netto oraz netto katastroficznego.
+
+
+Na poniższej mapie przedstawiono średnie straty w podziale na województwa dla scenariusza SCR-owego strat brutto.
