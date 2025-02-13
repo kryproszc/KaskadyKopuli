@@ -1,26 +1,6 @@
-heatmap_brutto <- heatmap_brutto %>%
-  arrange(JPT_NAZWA_, Month) %>%  # Uporządkowanie danych
-  mutate(Srednia_Strata = ifelse(is.na(Srednia_Strata), 0, Srednia_Strata)) %>%  # Uzupełnienie NA
-  mutate(Kwantyl_Kategoria = cut(Srednia_Strata, breaks = kwantyle, labels = etykiety_kwantyli, include.lowest = TRUE))
-
-plot_ciepla <- ggplot(heatmap_brutto, aes(x = Month, y = JPT_NAZWA_, fill = Kwantyl_Kategoria)) +
-  geom_tile(color = "black", size = 0.4) +
-  geom_text(data = heatmap_brutto %>% filter(is.na(Srednia_Strata)), aes(label = "X"), color = "black", size = 3) +
-  scale_fill_manual(
-    values = kolory_paleta,
-    name = "Średnia strata",
-    labels = etykiety_kwantyli,
-    drop = TRUE,
-    na.translate = FALSE
-  ) +
-  labs(title = "Mapa strat brutto", x = "Miesiąc", y = "Województwo") +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
-    axis.text.y = element_text(size = 9),
-    panel.grid = element_blank(),
-    aspect.ratio = 0.8,
-    legend.position = "right"
-  )
-
-ggsave("heatmap_ciepla.jpg")
+  theme = bs_theme(
+    bg = "#FBFBF8",  # Ultra-jasny kawowy (prawie biały)
+    fg = "#2D2D2D",  # Profesjonalny, ciemnoszary tekst
+    primary = "#BCAAA4",  # Delikatne beżowo-kawowe akcenty
+    base_font = font_google("Roboto")  # Nowoczesna, biznesowa czcionka
+  ),
