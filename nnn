@@ -546,4 +546,7 @@ plot_brutto_ciepla <- ggplot(heatmap_brutto, aes(x = Month, y = JPT_NAZWA_, fill
   )
 
 # Wyświetlenie mapy
-print(plot_brutto_ciepla)
+print(plot_brutto_ciepla
+
+  geom_text(data = heatmap_brutto %>% filter(!is.na(Srednia_Strata)), 
+
