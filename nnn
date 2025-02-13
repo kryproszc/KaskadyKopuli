@@ -497,39 +497,31 @@ plot_polska_kat_brutto
 
 
 
+kwantyle <- quantile(heatmap_brutto$Srednia_Strata, 
+                     probs = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99, 1), 
+                     na.rm = TRUE)
 
-df_pierwotny_sf <- df_pierwotny %>%
-  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
-  st_join(wojewodztwa["JPT_NAZWA_"])
-df_rozprzestrzeniony_sf <- df_rozprzestrzeniony %>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
-  st_join(wojewodztwa["JPT_NAZWA_"])
-df_pierwotny <- df_pierwotny_sf %>% st_drop_geometry()
-df_rozprzestrzeniony <- df_rozprzestrzeniony_sf %>% st_drop_geometry()
-df_brutto <- df_pierwotny %>%
-  rename(Strata = Szkoda) %>%
-  mutate(Typ = "Pierwotny") %>%
-  bind_rows(df_rozprzestrzeniony %>%
-              rename(Strata = WielkoscKwota) %>%
-              mutate(Typ = "Rozprzestrzeniony")) %>%
-  full_join(expand.grid(JPT_NAZWA_ = unique(wojewodztwa$JPT_NAZWA_), Month = 0:11), 
-            by = c("JPT_NAZWA_", "Month"))
-heatmap_brutto <- df_brutto %>%
-  group_by(JPT_NAZWA_, Month) %>%
-  summarise(Srednia_Strata = mean(Strata, na.rm = TRUE), .groups = "drop")
-kwantyle <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, length.out = 11), na.rm = TRUE)
+# Tworzymy etykiety przedziałów (np. "1000 - 5000")
 etykiety_kwantyli <- paste0(round(kwantyle[-length(kwantyle)]), " - ", round(kwantyle[-1]))
+
+# Przypisujemy wartości do przedziałów kwantylowych
 heatmap_brutto <- heatmap_brutto %>%
   mutate(Kwantyl_Kategoria = cut(Srednia_Strata, breaks = kwantyle, labels = etykiety_kwantyli, include.lowest = TRUE))
+
+# Upewniamy się, że kategorie są w poprawnej kolejności
 heatmap_brutto$Kwantyl_Kategoria <- factor(heatmap_brutto$Kwantyl_Kategoria, levels = etykiety_kwantyli)
-kolory_paleta <- colorRampPalette(c("#CC0000", "#FF4500", "#FFA500","#FFD700","#FFFFCC"))(10)
-miesiace_labels <- c("Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", 
-                     "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień")
-heatmap_brutto$Month <- factor(heatmap_brutto$Month, levels = 0:11, labels = miesiace_labels)
+kolory_paleta <- colorRampPalette(c("#FFFFCC", "#FFD700", "#FFA500", "#FF4500", "#CC0000", "#800000"))(11)
 plot_brutto_ciepla <- ggplot(heatmap_brutto, aes(x = Month, y = JPT_NAZWA_, fill = Kwantyl_Kategoria)) +
+  # Kolorowe kafelki
   geom_tile(color = "black", size = 0.4) +
+  
+  # Puste pola (NA) na białym tle
   geom_tile(data = heatmap_brutto %>% filter(is.na(Srednia_Strata)), fill = "white", color = "black", size = 0.4) +
+  
+  # Krzyżyki na pustych polach
   geom_text(data = heatmap_brutto %>% filter(is.na(Srednia_Strata)), aes(label = "x"), color = "black", size = 3) +
+  
+  # Skala kolorów w legendzie (bez NA)
   scale_fill_manual(
     values = kolory_paleta,  
     name = "Średnia strata",
@@ -537,9 +529,13 @@ plot_brutto_ciepla <- ggplot(heatmap_brutto, aes(x = Month, y = JPT_NAZWA_, fill
     drop = TRUE,
     na.translate = FALSE
   ) +
+  
+  # Oś X: nazwy miesięcy w pochylonej formie
   labs(title = "",
        x = "Miesiąc",
        y = "Województwo") +
+  
+  # Styl wykresu
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
@@ -549,3 +545,5 @@ plot_brutto_ciepla <- ggplot(heatmap_brutto, aes(x = Month, y = JPT_NAZWA_, fill
     legend.position = "right"
   )
 
+# Wyświetlenie mapy
+print(plot_brutto_ciepla)
