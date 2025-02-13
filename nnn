@@ -493,3 +493,59 @@ plot_polska_kat_brutto <- ggplot() +
 
 plot_polska_kat_brutto
 
+
+
+
+
+
+df_pierwotny_sf <- df_pierwotny %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
+  st_join(wojewodztwa["JPT_NAZWA_"])
+df_rozprzestrzeniony_sf <- df_rozprzestrzeniony %>%
+  st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
+  st_join(wojewodztwa["JPT_NAZWA_"])
+df_pierwotny <- df_pierwotny_sf %>% st_drop_geometry()
+df_rozprzestrzeniony <- df_rozprzestrzeniony_sf %>% st_drop_geometry()
+df_brutto <- df_pierwotny %>%
+  rename(Strata = Szkoda) %>%
+  mutate(Typ = "Pierwotny") %>%
+  bind_rows(df_rozprzestrzeniony %>%
+              rename(Strata = WielkoscKwota) %>%
+              mutate(Typ = "Rozprzestrzeniony")) %>%
+  full_join(expand.grid(JPT_NAZWA_ = unique(wojewodztwa$JPT_NAZWA_), Month = 0:11), 
+            by = c("JPT_NAZWA_", "Month"))
+heatmap_brutto <- df_brutto %>%
+  group_by(JPT_NAZWA_, Month) %>%
+  summarise(Srednia_Strata = mean(Strata, na.rm = TRUE), .groups = "drop")
+kwantyle <- quantile(heatmap_brutto$Srednia_Strata, probs = seq(0, 1, length.out = 11), na.rm = TRUE)
+etykiety_kwantyli <- paste0(round(kwantyle[-length(kwantyle)]), " - ", round(kwantyle[-1]))
+heatmap_brutto <- heatmap_brutto %>%
+  mutate(Kwantyl_Kategoria = cut(Srednia_Strata, breaks = kwantyle, labels = etykiety_kwantyli, include.lowest = TRUE))
+heatmap_brutto$Kwantyl_Kategoria <- factor(heatmap_brutto$Kwantyl_Kategoria, levels = etykiety_kwantyli)
+kolory_paleta <- colorRampPalette(c("#CC0000", "#FF4500", "#FFA500","#FFD700","#FFFFCC"))(10)
+miesiace_labels <- c("Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", 
+                     "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień")
+heatmap_brutto$Month <- factor(heatmap_brutto$Month, levels = 0:11, labels = miesiace_labels)
+plot_brutto_ciepla <- ggplot(heatmap_brutto, aes(x = Month, y = JPT_NAZWA_, fill = Kwantyl_Kategoria)) +
+  geom_tile(color = "black", size = 0.4) +
+  geom_tile(data = heatmap_brutto %>% filter(is.na(Srednia_Strata)), fill = "white", color = "black", size = 0.4) +
+  geom_text(data = heatmap_brutto %>% filter(is.na(Srednia_Strata)), aes(label = "x"), color = "black", size = 3) +
+  scale_fill_manual(
+    values = kolory_paleta,  
+    name = "Średnia strata",
+    labels = rev(etykiety_kwantyli),  # Kolejność od najmniejszej do największej
+    drop = TRUE,
+    na.translate = FALSE
+  ) +
+  labs(title = "",
+       x = "Miesiąc",
+       y = "Województwo") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "italic", size = 9),
+    axis.text.y = element_text(size = 9),
+    panel.grid = element_blank(),
+    aspect.ratio = 0.8,
+    legend.position = "right"
+  )
+
