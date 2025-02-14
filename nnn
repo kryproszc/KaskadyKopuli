@@ -1,8 +1,31 @@
-Poniższa tabela przedstawia wartości kwantyli, średniej, odchylenia standardowego oraz współczynnika SCR dla wygenerowanych strat brutto, strat katastroficznych brutto, strat netto oraz strat katastroficznych netto na podstawie 50 symulacji. Te same symulacje zostały przedstawione na wykresie, gdzie na osi X zaznaczono kwantyle, a na osi Y odpowiadające im wartości kwantyli dla szkód.
 
+set.seed(123)  
+n <- 10000  
 
+x_prawdopodobienstwo <- seq(0, 1, length.out = 5200)
 
-W poniższej tabeli przedstawiono liczbę obiektów, w których wystąpił pożar, z podziałem na pożary pierwotne i rozprzestrzenione. Liczby te zostały obliczone dla scenariusza SCR-owego dla poszczególnych strat: brutto, brutto katastroficznego, netto oraz netto katastroficznego.
+y_szkoda <- log(1 + 4 * x_prawdopodobienstwo)
 
+u_standard <- runif(n)
 
-Na poniższej mapie przedstawiono średnie straty w podziale na województwa dla scenariusza SCR-owego strat brutto.
+alpha <- 0.5  
+u_modified <- runif(n)^alpha
+
+index_standard <- findInterval(u_standard, x_prawdopodobienstwo)
+index_modified <- findInterval(u_modified, x_prawdopodobienstwo)
+
+y_standard <- y_szkoda[index_standard]
+y_modified <- y_szkoda[index_modified]
+
+library(plotly)
+fig <- plot_ly() %>%
+  add_trace(x = u_standard, y = y_standard, type = 'scatter', mode = 'lines+markers',
+            name = 'y_standard', line = list(color = 'blue')) %>%
+  add_trace(x = u_standard, y = y_modified, type = 'scatter', mode = 'lines+markers',
+            name = 'y_modified', line = list(color = 'red')) %>%
+  layout(title = "Wykres porównawczy",
+         xaxis = list(title = "u_standard"),
+         yaxis = list(title = "Wartość"),
+         legend = list(x = 0.1, y = 0.9))
+
+fig
