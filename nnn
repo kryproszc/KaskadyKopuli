@@ -1,10 +1,2 @@
-fig <- plot_ly() %>%
-  add_lines(x = u_standard, y = y_standard, name = "y_standard", line = list(color = "blue")) %>%
-  add_lines(x = u_standard, y = y_modified, name = "y_modified", line = list(color = "red")) %>%
-  layout(title = "Porównanie y_standard i y_modified",
-         xaxis = list(title = "u_standard"),
-         yaxis = list(title = "Wartość"),
-         legend = list(x = 0.1, y = 0.9))
+https://stackoverflow.com/questions/79398319/is-there-another-method-to-install-tensorflow-2-18-0-with-python-3-13-1
 
-# Wyświetlenie wykresu
-fig
