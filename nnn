@@ -1,3 +1,10 @@
 https://stackoverflow.com/questions/79398319/is-there-another-method-to-install-tensorflow-2-18-0-with-python-3-13-1
 
 py -3.12 -m venv myenv
+
+
+py -3.12 -m pip install --upgrade pip
+py -3.12 -m pip install virtualenv
+py -3.12 -m virtualenv --version
+py -3.12 -m virtualenv myenv
+myenv\Scripts\activate
