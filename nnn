@@ -1,10 +1,6 @@
-https://stackoverflow.com/questions/79398319/is-there-another-method-to-install-tensorflow-2-18-0-with-python-3-13-1
+Good morning,
 
-py -3.12 -m venv myenv
+I am currently on vacation and will be returning to work tomorrow. I will also take care of completing all the required matters tomorrow.
+I would appreciate any updates on topics concerning me from today's meeting.
 
-
-py -3.12 -m pip install --upgrade pip
-py -3.12 -m pip install virtualenv
-py -3.12 -m virtualenv --version
-py -3.12 -m virtualenv myenv
-myenv\Scripts\activate
+Best regards,
