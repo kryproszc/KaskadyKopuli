@@ -1,6 +1,126 @@
-Good morning,
 
-I am currently on vacation and will be returning to work tomorrow. I will also take care of completing all the required matters tomorrow.
-I would appreciate any updates on topics concerning me from today's meeting.
+#####################################3
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(parallel)
+library(readxl)
+setwd("C:/Users/szczesnk/PycharmProjects/pythonProject")
 
-Best regards,
+
+PCG64Generator <- function(seed = 202260011) {
+  set.seed(seed)
+  list(
+    random = function(size = 1) runif(size),
+    normal = function(mu = 0, sigma = 1, size = 1) rnorm(size, mean = mu, sd = sigma),
+    lognormal = function(mean = 0, sigma = 1, size = 1) rlnorm(size, meanlog = mean, sdlog = sigma),
+    chi_squared = function(df, size = 1) rchisq(size, df = df)
+  )
+}
+
+##
+
+
+process_row <- function(args) {
+  seed <- args[[1]]
+  row <- args[[2]]
+  mu <- args[[3]]
+  sigma <- args[[4]]
+  mm <- args[[5]]
+  data_paid_copy <- args[[6]]
+  Ultimate_Param_ReservingRisk <- args[[7]]
+  rng <- PCG64Generator(seed)
+  m_i <- mu
+  sigma_i <- sigma
+  for (j in seq_along(m_i)) {
+    max_ind_row <- max(1, mm - j)
+    for (i in max_ind_row:mm) {
+      VAR_i_j <- sigma_i[j]/ data_paid_copy[i, j]
+      lmean_i_j <- log((m_i[j]) ^ 2 / sqrt((m_i[j]) ^ 2 + VAR_i_j))
+      lstdev_i_j <- log(1 + (VAR_i_j / (m_i[j]) ^ 2))
+      CL_i_j_choose <- rng$lognormal(lmean_i_j, lstdev_i_j, size = 1)
+      data_paid_copy[i, j + 1] <- data_paid_copy[i, j] * CL_i_j_choose
+    }
+  }
+  u_i <- data_paid_copy[, ncol(data_paid_copy) - 1]
+  result_j <- sum(u_i) - Ultimate_Param_ReservingRisk
+  return(result_j)
+}
+
+random_stochastic_parameters <- function(sigma_j, dev, sd, dimension) {
+  rng <- PCG64Generator()
+  stochastic_sigma_j <- matrix(0, nrow = dimension[3], ncol = dimension[4])
+  mu_j <- matrix(0, nrow = dimension[3], ncol = dimension[4])
+  for (j in 1:dimension[4]) {
+    mu_j[, j] <- rng$normal(dev[j], sd[j], size = dimension[3])
+    st_swobody <- max(1, dimension[1] - j)
+    chi_list <- rng$chi_squared(st_swobody, size = dimension[3])
+    stochastic_sigma_j[, j] <- (floor(chi_list) * sigma_j[j]) / st_swobody
+  }
+  list(mu_j, stochastic_sigma_j)
+}
+
+stochastic_triangle_forward_test_szybki <- function(data_paid, 
+                                                    sigma_j,
+                                                    dev, 
+                                                    sd,
+                                                    sim, 
+                                                    Ultimate_Param_ReservingRisk,
+                                                    num_sim, batch_size = 2000, 
+                                                    result_file = "results.csv") {
+  mm <- nrow(data_paid)
+  nn <- ncol(data_paid)
+  dimension <- c(mm, nn, sim, length(dev))
+  # Wywołanie random_stochastic_parameters raz
+  params <- random_stochastic_parameters(sigma_j, dev, sd, dimension)
+  mu <- params[[1]]
+  sigma <- params[[2]]
+  results <- numeric()
+  # Otwarcie pliku wynikowego
+  write.table(NULL, file = result_file, sep = ",", col.names = FALSE, row.names = FALSE)
+  
+  for (i in seq(1, sim, by = batch_size)) {
+    current_batch_size <- min(batch_size, sim - i + 1)
+    data_paid_copy <- data_paid
+    args <- lapply(1:current_batch_size, function(batch_row) {
+      #202260011
+      global_row <- i + batch_row - 1  # Przesunięcie indeksu, aby uwzględnić numer partii
+      list(seed = 202260011+sample(1:202260011,1)*(-1)^i, row = global_row, mu = mu[global_row, ], sigma = sigma[global_row, ], mm = mm, data_paid_copy = data_paid_copy, Ultimate_Param_ReservingRisk = Ultimate_Param_ReservingRisk)
+    })
+    num_cores <- detectCores() - 1
+    cl <- makeCluster(num_cores)
+    clusterExport(cl, list("process_row", "PCG64Generator"))
+    Total_BE <- parLapply(cl, args, process_row)
+    stopCluster(cl)
+    batch_results <- unlist(Total_BE)
+    results <- c(results, batch_results)
+    # Zapis wyników do pliku po każdej partii
+    write.table(batch_results, file = result_file, sep = ",", col.names = FALSE, row.names = FALSE, append = TRUE)
+    # Debugowanie
+    cat("Zamknięto klaster dla partii od", i, "do", i + current_batch_size - 1, "\n")
+  }
+  
+  return(results)
+}
+#################### testy ############################
+setwd("C:/Users/szczesnk/PycharmProjects/pythonProject")
+options(digits = 15)
+trian_input<-read.csv2("data_input.csv")
+trian_input<-as.matrix(trian_input)
+wsp_input<-read.csv2("wsp_csv.csv")
+
+result <- stochastic_triangle_forward_test_szybki(trian_input, 
+                                                  sqrt(as.numeric(unlist(wsp_input[2,]))), 
+                                                  as.numeric(unlist(wsp_input[1,])),
+                                                  as.numeric(unlist(wsp_input[3,])),
+                                                  10000
+                                                  ,0 
+                                                  ,200)
+quantile(result,0.995)
+mean(result)-4244029097
+
+
+result_final<-1.13*(result-4244029097)
+quantile(result_final,0.995)-mean(result_final)
+result_final2<-1.13*(result-4244029097)
+
