@@ -1,3 +1,15 @@
+df_t_copy <- data_paid
+mm <- nrow(df_t_copy)
+nn <- ncol(df_t_copy)
+f<-f_inp
+xx<-MackChainLadder(RAA)
+f<-xx$f[1:9]
+if (length(f_inp) > mm) {
+  for (k in seq(mm + 1, length(f_inp), by = 1)) {
+    df_t_copy[[as.character(k)]] <- NA
+  }
+}
+
 for (j in 1:length(f)) {
   max_ind_row <- max(1, mm - j +1)
   for (i in max_ind_row:mm) {
@@ -6,3 +18,5 @@ for (j in 1:length(f)) {
 }
 
 sum(df_t_copy[,dim(df_t_copy)[2]])
+
+View(df_t_copy)
