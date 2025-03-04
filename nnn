@@ -95,7 +95,18 @@ process_row <- function(args) {
       lmean_i_j <- log((m_i[j]) ^ 2 / sqrt((m_i[j]) ^ 2 + VAR_i_j))  # Teraz j istnieje
       lstdev_i_j <- log(1 + (VAR_i_j / (m_i[j]) ^ 2))
       
-      CL_i_j_choose <- rng$lognormal(lmean_i_j, lstdev_i_j, size = 1)
+      CL_i_j <- rng$lognormal(lmean_i_j, lstdev_i_j, size = 1)
+      if ( 
+        CL_i_j > m_i[j]-2*sqrt(VAR_i_j)&& CL_i_j < m_i[j]+2*sqrt(VAR_i_j)) {
+        CL_i_j_choose <- CL_i_j
+      }
+      else if ( 
+        CL_i_j > m_i[j]-3*sqrt(VAR_i_j)&&CL_i_j < m_i[j]-2*sqrt(VAR_i_j)&& CL_i_j > m_i[j]+2*sqrt(VAR_i_j)&& CL_i_j < m_i[j]+3*sqrt(VAR_i_j)) {
+        CL_i_j_choose <- 0.5*CL_i_j
+      }
+      else{
+        CL_i_j_choose<-1
+      }
       data_paid_copy[i, j + 1] <- data_paid_copy[i, j] * CL_i_j_choose
     }
   }
@@ -185,17 +196,27 @@ stochastic_triangle_forward_test_szybki <- function(data_paid,
   return(results)
 }
 #################### testy ############################
-
-result <- stochastic_triangle_forward_test_szybki(trian_input, 
-                                                  sqrt(as.numeric(unlist(wsp_input[2,]))), 
+options(digits = 10)
+wsp <- read.csv2("wsp_csv.csv", sep = ";", dec = ",")
+dev <- as.numeric(wsp[1, 1:60])
+sigma_j <- as.numeric(wsp[2, 1:60])
+sigma_j[sigma_j==0]<-0.005
+sd <- as.numeric(wsp[3, 1:60])
+data_paid <- read.csv("data_input.csv", sep = ";", dec = ",")[, -1]
+result <- stochastic_triangle_forward_test_szybki(data_paid, 
+                                                  sqrt(sigma_j), 
                                                   as.numeric(unlist(wsp_input[1,])),
                                                   as.numeric(unlist(wsp_input[3,])),
-                                                  1000)
+                                                  10000)
 quantile(result,0.995)
-mean(result)-4244029097
+mean(result)-4232149669
 
 
-result_final<-1.13*(result-4244029097)
+quantile(result,0.9)
+
+
+result_final<-1.1392*(result-4232149669)
+quantile(result_final,0.995)
 quantile(result_final,0.995)-mean(result_final)
 
 
