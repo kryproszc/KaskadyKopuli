@@ -1,22 +1,203 @@
-df_t_copy <- data_paid
-mm <- nrow(df_t_copy)
-nn <- ncol(df_t_copy)
-f<-f_inp
-xx<-MackChainLadder(RAA)
-f<-xx$f[1:9]
-if (length(f_inp) > mm) {
-  for (k in seq(mm + 1, length(f_inp), by = 1)) {
-    df_t_copy[[as.character(k)]] <- NA
-  }
+
+#####################################3
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(parallel)
+library(readxl)
+setwd("C:/Users/szczesnk/PycharmProjects/pythonProject")
+
+library(Rcpp)
+library(Rcpp)
+
+# Funkcja C++ do generowania liczb losowych przy użyciu PCG-XSH-RR
+cppFunction('
+#include "C:/Users/szczesnk/PycharmProjects/pythonProject/pcg_random.hpp"
+#include <vector>
+#include <random>
+
+// Użycie PCG-XSH-RR
+std::vector<double> pcg_xsh_rr(int n, uint64_t seed) {
+    std::vector<double> result(n);
+    
+    // PCG-XSH-RR - generator liczb losowych
+    pcg_engines::setseq_xsh_rr_64_32 rng(seed);
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+    for (int i = 0; i < n; ++i) {
+        result[i] = dist(rng);
+    }
+    return result;
+}')
+
+# Generator korzystający z PCG-XSH-RR
+PCG32Generator <- function(seed = 202260011) {
+  list(
+    # Losowe liczby z jednostajnego rozkładu (0,1)
+    random = function(size = 1) pcg_xsh_rr(size, seed),
+    
+    # Liczby z rozkładu normalnego N(mu, sigma^2)
+    normal = function(mu = 0, sigma = 1, size = 1) {
+      qnorm(pcg_xsh_rr(size, seed), mean = mu, sd = sigma)
+    },
+    
+    # Liczby z rozkładu log-normalnego
+    lognormal = function(mean = 0, sigma = 1, size = 1) {
+      qlnorm(pcg_xsh_rr(size, seed), meanlog = mean, sdlog = sigma)
+    },
+    
+    # Liczby z rozkładu chi-kwadrat (df stopni swobody)
+    chi_squared = function(df, size = 1) {
+      qchisq(pcg_xsh_rr(size, seed), df = df)
+    }
+  )
 }
 
-for (j in 1:length(f)) {
-  max_ind_row <- max(1, mm - j +1)
-  for (i in max_ind_row:mm) {
-    df_t_copy[i, j + 1] <- df_t_copy[i ,j] * f[j]
+process_row <- function(args) {
+  # Jeśli funkcja nie istnieje, kompilujemy ją
+  if (!exists("pcg_xsh_rr")) {
+    library(Rcpp)
+    cppFunction('
+      #include "C:/Users/szczesnk/PycharmProjects/pythonProject/pcg_random.hpp"
+      #include <vector>
+      #include <random>  
+
+      std::vector<double> pcg_xsh_rr(int n, uint64_t seed) {
+          std::vector<double> result(n);
+          pcg_engines::setseq_xsh_rr_64_32 rng(seed);
+          std::uniform_real_distribution<double> dist(0.0, 1.0);
+          for (int i = 0; i < n; ++i) {
+              result[i] = dist(rng);
+          }
+          return result;
+      }')
   }
+  
+  # Pobranie argumentów
+  seed <- args[[1]]
+  row <- args[[2]]
+  mu <- args[[3]]
+  sigma <- args[[4]]
+  mm <- args[[5]]
+  data_paid_copy <- args[[6]]
+  Ultimate_Param_ReservingRisk <- args[[7]]
+  
+  rng <- PCG32Generator(seed)
+  m_i <- mu
+  sigma_i <- sigma
+  
+  # Poprawna pętla
+  for (j in 1:length(m_i)) {  # Definiujemy j tutaj
+    max_ind_row <- max(1, mm - j+1)
+    
+    for (i in max_ind_row:mm) {
+      VAR_i_j <- sigma_i[j] / data_paid_copy[i, j]
+      lmean_i_j <- log((m_i[j]) ^ 2 / sqrt((m_i[j]) ^ 2 + VAR_i_j))  # Teraz j istnieje
+      lstdev_i_j <- log(1 + (VAR_i_j / (m_i[j]) ^ 2))
+      
+      CL_i_j_choose <- rng$lognormal(lmean_i_j, lstdev_i_j, size = 1)
+      data_paid_copy[i, j + 1] <- data_paid_copy[i, j] * CL_i_j_choose
+    }
+  }
+  
+  u_i <- data_paid_copy[, dim(data_paid_copy)[2]]
+  result_j <- sum(u_i) - Ultimate_Param_ReservingRisk
+  return(result_j)
 }
 
-sum(df_t_copy[,dim(df_t_copy)[2]])
 
-View(df_t_copy)
+random_stochastic_parameters <- function(sigma_j, dev, sd, dimension) {
+  rng <- PCG32Generator()
+  stochastic_sigma_j <- matrix(0, nrow = dimension[3], ncol = dimension[4])
+  mu_j <- matrix(0, nrow = dimension[3], ncol = dimension[4])
+  for (j in 1:dimension[4]) {
+    mu_j[, j] <- rng$normal(dev[j], sd[j], size = dimension[3])
+    st_swobody <- max(1, dimension[1] - j-1)
+    chi_list <- rng$chi_squared(st_swobody, size = dimension[3])
+    stochastic_sigma_j[, j] <- (floor(chi_list) * sigma_j[j]) / st_swobody
+  }
+  list(mu_j, stochastic_sigma_j)
+}
+
+stochastic_triangle_forward_test_szybki <- function(data_paid, 
+                                                    sigma_j,
+                                                    dev, 
+                                                    sd,
+                                                    sim, 
+                                                    Ultimate_Param_ReservingRisk=0,
+                                                    num_sim, batch_size = 2000, 
+                                                    result_file = "results.csv") {
+  mm <- nrow(data_paid)
+  nn <- ncol(data_paid)
+  dimension <- c(mm, nn, sim, length(dev))
+  # Wywołanie random_stochastic_parameters raz
+  params <- random_stochastic_parameters(sigma_j, dev, sd, dimension)
+  mu <- params[[1]]
+  sigma <- params[[2]]
+  results <- numeric()
+  # Otwarcie pliku wynikowego
+  write.table(NULL, file = result_file, sep = ",", col.names = FALSE, row.names = FALSE)
+  
+  for (i in seq(1, sim, by = batch_size)) {
+    current_batch_size <- min(batch_size, sim - i + 1)
+    data_paid_copy <- data_paid
+    args <- lapply(1:current_batch_size, function(batch_row) {
+      #202260011
+      global_row <- i + batch_row - 1  # Przesunięcie indeksu, aby uwzględnić numer partii
+      list(seed = 202260011+sample(-2022600:2022600,1), row = global_row, mu = mu[global_row, ], sigma = sigma[global_row, ], mm = mm, data_paid_copy = data_paid_copy, Ultimate_Param_ReservingRisk = Ultimate_Param_ReservingRisk)
+    })
+    num_cores <- detectCores() - 1
+    cl <- makeCluster(num_cores)
+    
+    # Eksportowanie funkcji i generatora do klastrów
+    clusterExport(cl, list("process_row", "PCG32Generator"))
+    
+    # Każdy wątek musi skompilować `pcg_xsh_rr()`
+    clusterEvalQ(cl, {
+      library(Rcpp)
+      cppFunction('
+    #include "C:/Users/szczesnk/PycharmProjects/pythonProject/pcg_random.hpp"
+    #include <vector>
+    #include <random>  
+
+    std::vector<double> pcg_xsh_rr(int n, uint64_t seed) {
+        std::vector<double> result(n);
+        pcg_engines::setseq_xsh_rr_64_32 rng(seed);
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
+        for (int i = 0; i < n; ++i) {
+            result[i] = dist(rng);
+        }
+        return result;
+    }')
+    })
+    
+    # Teraz `pcg_xsh_rr()` jest dostępne we wszystkich wątkach!
+    Total_BE <- parLapply(cl, args, process_row)
+    stopCluster(cl)
+    batch_results <- unlist(Total_BE)
+    results <- c(results, batch_results)
+    # Zapis wyników do pliku po każdej partii
+    write.table(batch_results, file = result_file, sep = ",", col.names = FALSE, row.names = FALSE, append = TRUE)
+    # Debugowanie
+    cat("Zamknięto klaster dla partii od", i, "do", i + current_batch_size - 1, "\n")
+  }
+  
+  return(results)
+}
+#################### testy ############################
+
+result <- stochastic_triangle_forward_test_szybki(trian_input, 
+                                                  sqrt(as.numeric(unlist(wsp_input[2,]))), 
+                                                  as.numeric(unlist(wsp_input[1,])),
+                                                  as.numeric(unlist(wsp_input[3,])),
+                                                  1000)
+quantile(result,0.995)
+mean(result)-4244029097
+
+
+result_final<-1.13*(result-4244029097)
+quantile(result_final,0.995)-mean(result_final)
+
+
+#####################################3#
+
