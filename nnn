@@ -1,5 +1,8 @@
-if (length(f_inp) > mm) {
-  for (k in seq(mm + 1, length(f_inp), by = 1)) {
-    df_t_copy[[as.character(k)]] <- NA
+for (j in 1:length(f)) {
+  max_ind_row <- max(1, mm - j +1)
+  for (i in max_ind_row:mm) {
+    df_t_copy[i, j + 1] <- df_t_copy[i ,j] * f[j]
   }
 }
+
+sum(df_t_copy[,dim(df_t_copy)[2]])
