@@ -3,11 +3,43 @@ import pandas as pd
 import multiprocessing as mp
 from tqdm import tqdm
 
+import numpy as np
+import pandas as pd
+import multiprocessing as mp
+from tqdm import tqdm
 
-# 1. Generator PRNG
+
+def random_stochastic_parameters(sigma_j, dev, sd, mm, nSimPart, seed):
+    rng = PCG64Generator(seed)  # Ustawienie seeda
+
+    nDev = len(dev)
+    mu_part = np.zeros((nSimPart, nDev))
+    sig_part = np.zeros((nSimPart, nDev))
+
+    for j in range(nDev):
+        mu_part[:, j] = rng.normal(mu=dev[j], sigma=sd[j], size=nSimPart)
+        df = max(1, mm - j - 1)
+        chi_list = rng.chi_squared(df, size=nSimPart)
+        sig_part[:, j] = (np.floor(chi_list) * sigma_j[j]) / df
+
+    return mu_part, sig_part
+
+
+import numpy as np
+import pandas as pd
+import multiprocessing as mp
+from tqdm import tqdm
+
+
+# Globalne ustawienie seed w każdym procesie
+def init_worker(seed):
+    np.random.seed(seed)
+
+
+# 1. Generator PRNG z seed
 class PCG64Generator:
-    def __init__(self):
-        self.rng = np.random.default_rng()
+    def __init__(self, seed=None):
+        self.rng = np.random.default_rng(seed)
 
     def random(self, size=1):
         return self.rng.uniform(size=size)
@@ -23,9 +55,8 @@ class PCG64Generator:
 
 
 # 2. Funkcja równoległa
-
-def process_row(local_index, mu_mat_global, sigma_mat_global, data_paid_global, Ultimate_Param_ResRisk_global):
-    rng = PCG64Generator()
+def process_row(local_index, mu_mat_global, sigma_mat_global, data_paid_global, Ultimate_Param_ResRisk_global, seed):
+    rng = PCG64Generator(seed + local_index)  # Unikalny, ale powtarzalny seed
 
     m_i = mu_mat_global[local_index, :]
     sigma_i = sigma_mat_global[local_index, :]
@@ -51,36 +82,14 @@ def process_row(local_index, mu_mat_global, sigma_mat_global, data_paid_global, 
     return np.sum(u_i) - Ultimate_Param_ResRisk_global
 
 
-# 3. Losowanie parametrów
-
-def random_stochastic_parameters(sigma_j, dev, sd, mm, nSimPart):
-    rng = PCG64Generator()
-    nDev = len(dev)
-
-    mu_part = np.zeros((nSimPart, nDev))
-    sig_part = np.zeros((nSimPart, nDev))
-
-    for j in range(nDev):
-        mu_part[:, j] = rng.normal(mu=dev[j], sigma=sd[j], size=nSimPart)
-        df = max(1, mm - j - 1)
-        chi_list = rng.chi_squared(df, size=nSimPart)
-        sig_part[:, j] = (np.floor(chi_list) * sigma_j[j]) / df
-
-    return mu_part, sig_part
-
-
 # 4. Główna funkcja batchowana
-
 def stochastic_triangle_forward_test_szybki_batched(
-        data_paid,
-        sigma_j, dev, sd,
-        simTotal=100000,
-        Ultimate_Param_ReservingRisk=0,
+        data_paid, sigma_j, dev, sd,
+        simTotal=100000, Ultimate_Param_ReservingRisk=0,
         result_file="results_batched.csv",
-        main_seed=202260011,
-        batch_size=10000
+        main_seed=202260011, batch_size=10000
 ):
-    np.random.seed(main_seed)
+    np.random.seed(main_seed)  # Ustawienie globalnego seed raz na start
     mm = data_paid.shape[0]
     nBatches = int(np.ceil(simTotal / batch_size))
     num_cores = max(2, mp.cpu_count() - 1)
@@ -95,12 +104,10 @@ def stochastic_triangle_forward_test_szybki_batched(
             end_b = min(sim_done + batch_size, simTotal)
             current_batch_size = end_b - start_b
 
-            np.random.seed(main_seed + b)
+            # Przekazujemy SEED dla batcha!
+            mu_part, sigma_part = random_stochastic_parameters(sigma_j, dev, sd, mm, current_batch_size, main_seed + b)
 
-            mu_part, sigma_part = random_stochastic_parameters(sigma_j, dev, sd, mm, current_batch_size)
-
-            args = [(i, mu_part, sigma_part, data_paid, Ultimate_Param_ReservingRisk) for i in
-                    range(current_batch_size)]
+            args = [(i, mu_part, sigma_part, data_paid, Ultimate_Param_ReservingRisk, main_seed + b) for i in range(current_batch_size)]
             batch_out = pool.starmap(process_row, args)
             batch_res = np.array(batch_out)
 
@@ -137,7 +144,7 @@ if __name__ == "__main__":
         Ultimate_Param_ReservingRisk=0,
         result_file="results_batched.csv",
         main_seed=202260011,
-        batch_size=10000
+        batch_size=1000
     )
 
     # Analiza wyników
