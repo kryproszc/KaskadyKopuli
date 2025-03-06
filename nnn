@@ -32,7 +32,7 @@ def random_stochastic_parameters(sigma_j, dev, sd, e_values, mm, nSimPart, seed)
         mu_part[:, j] = rng.normal(mu=dev[j], sigma=sd[j], size=nSimPart)
         df = max(1, mm - j)
         chi_list = rng.chi_squared(df, size=nSimPart)
-        sig_part[:, j] = (chi_list * sigma_j[j] ** 2) / e_values[j]
+        sig_part[:, j] = (chi_list * sigma_j[j] ** 2) /df
     
     return mu_part, sig_part
 
@@ -48,19 +48,19 @@ def process_row(local_index, mu_mat_global, sigma_mat_global, data_paid_global, 
     for j in range(len(m_i)):
         max_ind_row = max(1, mm - j)
         for i in range(max_ind_row - 1, mm):
-            VAR_i_j = sigma_i[j]  # Już podzielone przez e_i w poprzednim kroku
+            VAR_i_j = (sigma_i[j] ** 2) / e_values[i]
             
             if m_i[j] >= 0:
                 lmean = np.log((m_i[j] ** 2) / np.sqrt(m_i[j] ** 2 + VAR_i_j))
                 lstdev = np.sqrt(np.log(1 + VAR_i_j / m_i[j] ** 2))
                 Stochastic_LR_i_j = rng.lognormal(lmean, lstdev, size=1)[0]
-                data_paid_copy[i, j+1] = e_values[j] * Stochastic_LR_i_j + data_paid_copy[i, j]
+                data_paid_copy[i, j+1] = e_values[i] * Stochastic_LR_i_j + data_paid_copy[i, j]
             else:
-                adj_mu = m_i[j] + (data_paid_copy[i, j] / e_values[j])
+                adj_mu = m_i[j] + (data_paid_copy[i, j] / e_values[i])
                 lmean = np.log((adj_mu ** 2) / np.sqrt(adj_mu ** 2 + VAR_i_j))
                 lstdev = np.sqrt(np.log(1 + VAR_i_j / (adj_mu ** 2)))
                 Stochastic_LR_i_j = rng.lognormal(lmean, lstdev, size=1)[0]
-                data_paid_copy[i, j+1] = e_values[j] * (Stochastic_LR_i_j - data_paid_copy[i, j] / e_values[j]) + data_paid_copy[i, j]
+                data_paid_copy[i, j+1] = e_values[i] * (Stochastic_LR_i_j - data_paid_copy[i, j] / e_values[i]) + data_paid_copy[i, j]
     
     u_i = data_paid_copy[:, -1]
     return np.sum(u_i) - Ultimate_Param_ResRisk_global
@@ -94,32 +94,3 @@ def stochastic_triangle_forward_test_szybki_batched(
             pbar.update(current_batch_size)
     print(f"===> Wykonano łącznie {sim_done} symulacji w {nBatches} partiach.")
     return results
-
-if __name__ == "__main__":
-    data_paid = pd.read_csv("data_input.csv", sep=";", decimal=",").iloc[:, 1:].values
-    wsp = pd.read_csv("wsp_csv.csv", sep=";", decimal=",").values
-    dev = wsp[0, :60].astype(float)
-    sigma_j = wsp[1, :60].astype(float)
-    sd = wsp[2, :60].astype(float)
-    e_values = wsp[3, :60].astype(float)
-    
-    result = stochastic_triangle_forward_test_szybki_batched(
-        data_paid=data_paid,
-        sigma_j=sigma_j,
-        dev=dev,
-        sd=sd,
-        e_values=e_values,
-        simTotal=100000,
-        Ultimate_Param_ReservingRisk=0,
-        result_file="results_batched.csv",
-        main_seed=202260011,
-        batch_size=1000
-    )
-    
-    results_cale = 1.1392 * (result - 4232149669)
-    print("Median:", np.median(results_cale))
-    for q in [0.995, 0.996, 0.997, 0.998, 0.999]:
-        quant_val = np.quantile(results_cale, q)
-        print(f"Quantile {q}: {quant_val}")
-    print("Mean:", np.mean(results_cale))
-    print("Difference (Quantile - Mean):", np.quantile(results_cale, 0.995) - np.mean(results_cale))
