@@ -1,85 +1,30 @@
-import numpy as np
-import pandas as pd
-# Klasa generatora liczb losowych
-class PCG64Generator:
-    def __init__(self, seed=None):
-        self.rng = np.random.default_rng(seed)
+results_a = np.zeros(simTotal)
+results_b = np.zeros(simTotal)
 
-    def lognormal(self, mean=0, sigma=1, size=1):
-        return self.rng.lognormal(mean, sigma, size)
+with mp.Pool(processes=num_cores) as pool, tqdm(total=simTotal, desc="Postęp symulacji") as pbar:
+    sim_done = 0
 
-# Funkcja główna symulacji
-def process_row(local_index, mu_mat_global, sigma_mat_global, data_paid_global, Ultimate_Param_ResRisk_global, seed):
-    rng = PCG64Generator(seed + local_index)  # Unikalny, ale powtarzalny seed
+    for b in range(nBatches):
+        start_b = sim_done
+        end_b = min(sim_done + batch_size, simTotal)
+        current_batch_size = end_b - start_b
 
-    m_i = mu_mat_global[local_index, :]
-    sigma_i = sigma_mat_global[local_index, :]
-    data_paid_copy = np.copy(data_paid_global)
+        # Generowanie parametrów dla batcha
+        mu_part, sigma_part = random_stochastic_parameters(sigma_j, dev, sd, mm, current_batch_size, main_seed + b)
 
-    mm, n_cols = data_paid_copy.shape
-    n_dev = len(m_i)
+        # Przygotowanie argumentów dla process_row
+        args = [(i, mu_part, sigma_part, data_paid, Ultimate_Param_ReservingRisk, main_seed + b) for i in range(current_batch_size)]
+        
+        # Uruchomienie równoległych procesów
+        batch_out = pool.starmap(process_row, args)
 
-    if n_cols < n_dev + 1:
-        extra_cols = (n_dev + 1) - n_cols
-        data_paid_copy = np.hstack((data_paid_copy, np.full((mm, extra_cols), np.nan)))
+        # Rozdzielenie wyników
+        batch_results_a, batch_results_b = zip(*batch_out)
+        
+        results_a[start_b:end_b] = batch_results_a
+        results_b[start_b:end_b] = batch_results_b
+        
+        sim_done = end_b
+        pbar.update(current_batch_size)
 
-    # Tworzymy kopię trójkąta dla nowej przekątnej
-    new_triangle = np.copy(data_paid_copy)
-
-    for j in range(len(m_i)):
-        max_ind_row = max(1, mm - j)
-        for i in range(max_ind_row - 1, mm):
-            VAR_i_j = sigma_i[j] / data_paid_copy[i, j]
-            lmean = np.log((m_i[j]) ** 2 / np.sqrt((m_i[j]) ** 2 + VAR_i_j))
-            lstdev = np.sqrt(np.log(1 + (VAR_i_j / (m_i[j]) ** 2)))
-            CL_i_j = rng.lognormal(lmean, lstdev, size=1)[0]
-
-            # Sprawdzenie, czy to pierwsza nowa przekątna (żółte wartości)
-            if j == mm - i - 1:
-                mu_j = m_i[j]
-                sd_j = sigma_i[j]
-
-                # Filtrowanie CL_i_j zgodnie z regułami
-                if mu_j - 2 * sd_j <= CL_i_j <= mu_j + 2 * sd_j:
-                    adjusted_CL = CL_i_j  # Pełny wpływ
-                elif mu_j - 3 * sd_j <= CL_i_j <= mu_j + 3 * sd_j:
-                    adjusted_CL = 0.5 * CL_i_j  # 50% wpływu
-                else:
-                    adjusted_CL = 0.1 * CL_i_j  # 10% wpływu
-
-                new_triangle[i, j + 1] = data_paid_copy[i, j] * adjusted_CL  # Kopia przekątnej
-                data_paid_copy[i, j + 1] = data_paid_copy[i, j] * adjusted_CL  # Modyfikacja w głównym trójkącie
-            else:
-                data_paid_copy[i, j + 1] = data_paid_copy[i, j] * CL_i_j  # Standardowe liczenie
-
-    print("Nowy trójkąt z dodaną przekątną (po filtrowaniu CL_i_j):")
-    print(pd.DataFrame(new_triangle).to_string())
-
-    # Zwracamy standardowy wynik
-    u_i = data_paid_copy[:, -1]
-    return np.sum(u_i) - Ultimate_Param_ResRisk_global
-
-
-if __name__ == "__main__":
-    # Wczytywanie danych
-    data_paid = pd.read_csv("data_input.csv", sep=";", decimal=",").iloc[:, 1:].values
-    wsp = pd.read_csv("wsp_csv.csv", sep=";", decimal=",").values
-
-    dev = wsp[0, :60].astype(float)
-    sigma_j = wsp[1, :60].astype(float)
-    sd = wsp[2, :60].astype(float)
-
-    # Przygotowanie parametrów
-    seed = 202260011
-    local_index = 0
-    Ultimate_Param_ResRisk_global = 0
-
-    # Dopasowanie macierzy do wymagań process_row
-    mu_mat_global = np.expand_dims(dev, axis=0)  # Przekształcenie dev w macierz 1 x n
-    sigma_mat_global = np.expand_dims(sigma_j, axis=0)  # Podobnie dla sigma_j
-
-    # Uruchomienie pojedynczej symulacji
-    result = process_row(local_index, mu_mat_global, sigma_mat_global, data_paid, Ultimate_Param_ResRisk_global, seed)
-
-    # Wyświetlenie wyniku
-    print("Wynik jednej symulacji:", result)
+print(f"===> Wykonano łącznie {sim_done} symulacji w {nBatches} partiach.")
