@@ -1,30 +1,24 @@
-results_a = np.zeros(simTotal)
-results_b = np.zeros(simTotal)
+data = {
+    0:  [4_5366e+07, 6_07589e+07],  # Szkoda w roku 2022
+    1:  [2_82039e+07, 3_93664e+07],  # Szkoda w 2023
+    2:  [2_14458e+07, 2_99337e+07],  # Szkoda w 2024
+    3:  [1_53089e+07, 2_04050e+07],  # Szkoda w 2025
+    4:  [1_46191e+07, 1_60514e+07],  # Szkoda w 2026
+}
+df_szkody = pd.DataFrame(data, index=[2021, 2022])
 
-with mp.Pool(processes=num_cores) as pool, tqdm(total=simTotal, desc="Postęp symulacji") as pbar:
-    sim_done = 0
+# Przykładowe stopy dyskontowe
+df_stopy = pd.DataFrame({
+    "MTPL_F": [1.030081, 1.099091, 1.174922, 1.256244, 1.341559]
+}, index=[2022, 2023, 2024, 2025, 2026])
 
-    for b in range(nBatches):
-        start_b = sim_done
-        end_b = min(sim_done + batch_size, simTotal)
-        current_batch_size = end_b - start_b
+# Tworzenie nowego DataFrame na zdyskontowane wartości
+df_szkody_dysk = df_szkody.copy()
 
-        # Generowanie parametrów dla batcha
-        mu_part, sigma_part = random_stochastic_parameters(sigma_j, dev, sd, mm, current_batch_size, main_seed + b)
-
-        # Przygotowanie argumentów dla process_row
-        args = [(i, mu_part, sigma_part, data_paid, Ultimate_Param_ReservingRisk, main_seed + b) for i in range(current_batch_size)]
-        
-        # Uruchomienie równoległych procesów
-        batch_out = pool.starmap(process_row, args)
-
-        # Rozdzielenie wyników
-        batch_results_a, batch_results_b = zip(*batch_out)
-        
-        results_a[start_b:end_b] = batch_results_a
-        results_b[start_b:end_b] = batch_results_b
-        
-        sim_done = end_b
-        pbar.update(current_batch_size)
-
-print(f"===> Wykonano łącznie {sim_done} symulacji w {nBatches} partiach.")
+# Dyskontowanie szkód
+for rok_zajscia in df_szkody.index:
+    for czas_rozwoju in df_szkody.columns:
+        rok_rozwoju = rok_zajscia + czas_rozwoju
+        if rok_rozwoju >= 2023:  # Dyskontujemy tylko szkody po 2023
+            stopa = df_stopy.loc[rok_rozwoju, "MTPL_F"]
+            df_szkody_dysk.loc[rok_zajscia, czas_rozwoju] /= stopa
