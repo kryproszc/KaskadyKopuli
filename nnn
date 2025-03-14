@@ -1,7 +1,7 @@
-df_stopy.columns = df_stopy.iloc[0]  # Przekształcamy pierwszy wiersz w nagłówki
-df_stopy = df_stopy[1:].reset_index(drop=True) 
+ZAPISZ wartości strat BRUTTO:
+    `sim_brutto_final` ← całkowita wartość strat dla ubezpieczyciela
+    `sim_brutto_kat_final` ← wartość strat katastroficznych brutto
 
-
-df_stopy = df_stopy.iloc[1:]  # Usunięcie pierwszego wiersza (który był błędnym nagłówkiem)
-df_stopy.columns = df_stopy.iloc[0]  # Przekształcamy nowy pierwszy wiersz w nagłówki
-df_stopy = df_stopy[1:].reset_index(drop=True)  # Usuwamy stary pierwszy wiersz
+ZAPISZ wartości strat NETTO:
+    `sim_netto_final` ← wartość strat netto po uwzględnieniu reasekuracji
+    `sim_netto_kat_final` ← wartość strat katastroficznych netto po reasekuracji
