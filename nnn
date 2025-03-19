@@ -1,11 +1,10 @@
-library(geosphere)
+packages <- c("sf", "dbscan", "dplyr")
 
-# Przykładowe współrzędne (lon, lat):
-lon1 <- 21.00
-lat1 <- 52.10
-lon2 <- 21.05
-lat2 <- 52.11
+# Sprawdzenie, które pakiety są zainstalowane
+new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
 
-# Haversine w metrach:
-dist_m <- distHaversine(c(lon1, lat1), c(lon2, lat2))
-dist_m
+# Instalacja brakujących pakietów
+if(length(new_packages)) install.packages(new_packages)
+
+# Wczytanie pakietów
+lapply(packages, library, character.only = TRUE)
