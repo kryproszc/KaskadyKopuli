@@ -8,3 +8,28 @@ if(length(new_packages)) install.packages(new_packages)
 
 # Wczytanie pakietów
 lapply(packages, library, character.only = TRUE)
+
+
+
+if (!require("openxlsx")) install.packages("openxlsx", dependencies = TRUE)
+library(openxlsx)
+
+# Przykładowa lista data.frame
+lista <- list(
+  data.frame(A = 1:5, B = letters[1:5]),
+  data.frame(X = 6:10, Y = LETTERS[6:10])
+)
+
+# Tworzenie nowego pliku Excel
+wb <- createWorkbook()
+
+# Iteracja przez listę i dodawanie arkuszy do pliku
+for (i in seq_along(lista)) {
+  addWorksheet(wb, sheetName = as.character(i))  # Nazwa sheetu jako numer z listy
+  writeData(wb, sheet = as.character(i), lista[[i]])
+}
+
+# Zapis pliku
+saveWorkbook(wb, "lista_dataframe.xlsx", overwrite = TRUE)
+
+cat("Plik 'lista_dataframe.xlsx' zapisany poprawnie.\n")
