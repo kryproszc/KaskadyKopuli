@@ -1,1 +1,11 @@
-Mam problem z konfiguracją Pythona na moim komputerze. Chciałbym używać Python 3.11.7 z lokalizacji: C:\msys64\ucrt64\bin\python.exe, ale system nadal używa Python 3.8.2, mimo że chcę pracować na nowszej wersji. Polecenie where python nie pokazuje żadnej wersji Pythona, mimo że 3.11.7 jest zainstalowany. Oczekiwane zachowanie: powinno zwrócić listę dostępnych wersji Pythona, np. C:\msys64\ucrt64\bin\python.exe oraz C:\Program Files\Python38\python.exe. Możliwa przyczyna: Python nie jest dodany do zmiennej środowiskowej PATH. Polecenie python --version nadal zwraca Python 3.8.2 zamiast 3.11.7. Oczekiwane zachowanie: powinno zwrócić Python 3.11.7. Możliwa przyczyna: Python 3.8.2 jest ustawiony jako domyślny w PATH, a Python 3.11.7 nie został dodany lub jest na niższej pozycji w zmiennej środowiskowej. Nie mogę usunąć Python 3.8.2, ponieważ nie widzę go w "Dodaj/Usuń programy". Oczekiwane zachowanie: możliwość odinstalowania Python 3.8.2 z poziomu Panelu sterowania. Możliwa przyczyna: Python 3.8.2 mógł być zainstalowany ręcznie, pochodzić z Microsoft Store lub być częścią innego środowiska (np. MSYS, MinGW). Polecenie python --list nie działa, więc nie mogę sprawdzić wszystkich wersji Pythona w systemie. Możliwa przyczyna: python --list nie jest standardowym poleceniem Pythona. Powinienem użyć py -0, ale jeśli py także nie działa, to możliwe, że Python Launcher nie jest zainstalowany. Mam także problem z aktywacją venv na Python 3.8.2. Gdy próbuję uruchomić wirtualne środowisko komendą venv\Scripts\activate, otrzymuję błąd: UnauthorizedAccess: File <ścieżka_do_venv>\Scripts\Activate.ps1 cannot be loaded because running scripts is disabled on this system. Możliwa przyczyna: PowerShell blokuje uruchamianie skryptów przez ExecutionPolicy. Oczekiwane zachowanie: możliwość aktywowania venv bez błędów. Proszę o pomoc w dodaniu Python 3.11.7 do zmiennej środowiskowej PATH i ustawieniu go jako domyślnego. Czy można usunąć Python 3.8.2, jeśli nie jest już potrzebny? Czy mogę zainstalować Python Launcher, aby łatwo przełączać wersje? Czy można sprawdzić ExecutionPolicy, aby venv\Scripts\activate działało poprawnie? Dziękuję za pomoc!
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test sieci firmowej</title>
+</head>
+<body>
+    <h1>Hello, co u Ciebie?</h1>
+</body>
+</html>
