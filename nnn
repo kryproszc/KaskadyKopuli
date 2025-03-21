@@ -1,4 +1,1 @@
-Start-Process -WindowStyle Hidden -FilePath "python" -ArgumentList "server.py"
-
-
-Get-Process | Where-Object {$_.ProcessName -like "python*"}
+http://127.0.0.1:8080/
