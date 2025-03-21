@@ -1,3 +1,7 @@
+
+Start-Process -NoNewWindow -FilePath "python" -ArgumentList "-m http.server 8080"
+
+
 New-NetFirewallRule -DisplayName "Allow Python HTTP Server" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080
 
 Get-NetFirewallRule | Select-String "Python HTTP Server"
