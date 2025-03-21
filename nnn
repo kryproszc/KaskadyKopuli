@@ -1,3 +1,9 @@
-Stop-Process -Name python -Force
+class CustomHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/":
+            self.path = "index.html"
+        return SimpleHTTPRequestHandler.do_GET(self)
 
-python -m http.server 8080 --bind 172.25.210.87
+server_address = ("", 8080)
+httpd = HTTPServer(server_address, CustomHandler)
+httpd.serve_forever()
