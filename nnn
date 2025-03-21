@@ -1,3 +1,2 @@
-Start-Process -WindowStyle Hidden -FilePath "python" -ArgumentList "server.py"
-Get-Process | Where-Object {$_.ProcessName -like "python*"}
-ipconfig
+New-NetFirewallRule -DisplayName "Allow Python HTTP Server" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080
+ping 172.25.210.87
