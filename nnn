@@ -1,1 +1,1 @@
-New-NetFirewallRule -DisplayName "Allow Python HTTP Server" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080
+Potrzebuję Node.js oraz npm do pracy nad aplikacją React.js.
