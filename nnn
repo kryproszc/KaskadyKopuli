@@ -1,13 +1,4 @@
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+Start-Process -WindowStyle Hidden -FilePath "python" -ArgumentList "server.py"
 
-class CustomHandler(SimpleHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/":
-            self.path = "index.html"
-        return SimpleHTTPRequestHandler.do_GET(self)
 
-server_address = ("", 8080)
-httpd = HTTPServer(server_address, CustomHandler)
-
-print("Serwer działa na porcie 8080...")
-httpd.serve_forever()
+Get-Process | Where-Object {$_.ProcessName -like "python*"}
