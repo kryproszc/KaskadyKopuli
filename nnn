@@ -1,1 +1,7 @@
-Potrzebuję Node.js oraz npm do pracy nad aplikacją React.js.
+Proces kalibracji parametrów rozprzestrzenienia, jak również działanie programu symulującego występowanie pożarów w obiektach, opiera się na informacji o ich lokalizacji, dlatego niezbędne jest posiadanie współrzędnych geograficznych tych obiektów. W kalibracji współrzędne te wykorzystywane są do wyznaczenia parametrów rozprzestrzenienia, w tym momentów warunkowych liczby rozprzestrzenień.
+
+W procesie symulacji losowane są obiekty, w których wystąpił pożar pierwotny, a następnie przeprowadzane jest losowanie rozprzestrzenienia się tych pożarów na inne obiekty. Rozprzestrzenienie to zależy bezpośrednio od odległości pomiędzy obiektami, dlatego ich znajomość jest kluczowa już na etapie generowania symulacji.
+
+Ponieważ nie jest możliwe dokładne wyznaczenie odległości między obiektami na podstawie danych lokalizacyjnych udostępnianych przez zakłady ubezpieczeń (tj. danych adresowych), konieczne jest przypisanie poszczególnym obiektom współrzędnych geograficznych. Na ich podstawie w prosty sposób można obliczyć odległości pomiędzy ubezpieczonymi obiektami.
+
+Niniejszy dokument stanowi uzupełnienie techniczne do rozdziału 2.1 dokumentacji koncepcyjnej modelu ryzyka pożaru, w którym przedstawiono główną koncepcję działania programu do geokodowania. Dlatego przed lekturą niniejszego opracowania zaleca się zapoznanie z ww. rozdziałem.
